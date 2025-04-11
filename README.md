@@ -25,7 +25,7 @@ Setup
 
 Clone the repository:
 git clone <repository-url>
-cd mern-app
+cd wizctf
 
 Install server dependencies:
 cd server
