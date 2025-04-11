@@ -1,11 +1,51 @@
 .questions-manager {
-  margin-top: 2rem;
+  width: 100%;
+  padding: 0 1rem;
 }
 
 .questions-grid {
   display: grid;
   grid-template-columns: 1fr 1.5fr;
   gap: 1.5rem;
+}
+
+.questions-form,
+.questions-list {
+  width: 100%;
+  overflow: hidden;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+}
+
+.questions-form h3,
+.questions-list h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: clamp(1.1rem, 2.5vw, 1.25rem);
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.75rem;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 1rem;
 }
 
 .questions-form textarea {
@@ -16,7 +56,12 @@
 .question-form-buttons {
   display: flex;
   gap: 1rem;
-  margin-top: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.questions-list {
+  overflow: auto;
 }
 
 .questions-list table {
@@ -32,8 +77,10 @@
 }
 
 .questions-list th {
-  background-color: var(--primary-color);
-  color: var(--text-color);
+  background-color: var(--primary-color, #4A90E2);
+  color: white;
+  position: sticky;
+  top: 0;
 }
 
 .question-inactive {
@@ -84,8 +131,48 @@
   width: auto;
 }
 
-@media (max-width: 768px) {
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .questions-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 992px) {
   .questions-grid {
     grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .question-form-buttons {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .questions-manager {
+    padding: 0 0.5rem;
+  }
+  
+  .questions-form,
+  .questions-list {
+    padding: 1rem;
+  }
+  
+  .questions-list table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 576px) {
+  .question-form-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .question-form-buttons button {
+    width: 100%;
   }
 }
