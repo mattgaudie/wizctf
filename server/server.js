@@ -25,10 +25,12 @@ app.use('/uploads', express.static(join(__dirname, 'uploads')));
 import authRoutes from './routes/api/auth.routes.js';
 import userRoutes from './routes/api/user.routes.js';
 import adminRoutes from './routes/api/admin.routes.js';
+import questionRoutes from './routes/api/question.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/questions', questionRoutes);
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {

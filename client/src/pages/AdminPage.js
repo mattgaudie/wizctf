@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.js';
 import * as adminService from '../services/admin.service.js';
 import * as userService from '../services/user.service.js';
 import MainLayout from '../components/layout/MainLayout.js';
+import QuestionsManager from '../components/admin/QuestionsManager.js';
 import './AdminPage.css';
 
 const AdminPage = () => {
@@ -27,6 +28,7 @@ const AdminPage = () => {
     role: 'user'
   });
   const [isEdit, setIsEdit] = useState(false);
+  const [activeTab, setActiveTab] = useState('users');
 
   const { firstName, lastName, email, password, organization, jobTitle, role } = formData;
 
@@ -164,164 +166,185 @@ const AdminPage = () => {
             {alert.msg}
           </div>
         )}
+        
+        <div className="admin-tabs">
+          <button 
+            className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => setActiveTab('users')}
+          >
+            User Management
+          </button>
+          <button 
+            className={`admin-tab ${activeTab === 'questions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('questions')}
+          >
+            Questions Management
+          </button>
+        </div>
 
-        <div className="admin-grid">
-          <div className="admin-section card">
-            <h2>{isEdit ? 'Edit User' : 'Create User'}</h2>
-            <form onSubmit={onSubmit}>
-              <div className="form-group">
-                <label htmlFor="firstName">First Name</label>
-                <input
-                  type="text"
-                  id="firstName"
-                  name="firstName"
-                  value={firstName}
-                  onChange={onChange}
-                  required
-                />
-              </div>
+        {activeTab === 'users' ? (
+          <div className="admin-section">
+            <div className="admin-grid">
+              <div className="admin-section card">
+                <h2>{isEdit ? 'Edit User' : 'Create User'}</h2>
+                <form onSubmit={onSubmit}>
+                  <div className="form-group">
+                    <label htmlFor="firstName">First Name</label>
+                    <input
+                      type="text"
+                      id="firstName"
+                      name="firstName"
+                      value={firstName}
+                      onChange={onChange}
+                      required
+                    />
+                  </div>
 
-              <div className="form-group">
-                <label htmlFor="lastName">Last Name</label>
-                <input
-                  type="text"
-                  id="lastName"
-                  name="lastName"
-                  value={lastName}
-                  onChange={onChange}
-                  required
-                />
-              </div>
+                  <div className="form-group">
+                    <label htmlFor="lastName">Last Name</label>
+                    <input
+                      type="text"
+                      id="lastName"
+                      name="lastName"
+                      value={lastName}
+                      onChange={onChange}
+                      required
+                    />
+                  </div>
 
-              <div className="form-group">
-                <label htmlFor="email">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={email}
-                  onChange={onChange}
-                  required
-                  disabled={isEdit}
-                />
-              </div>
+                  <div className="form-group">
+                    <label htmlFor="email">Email</label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={email}
+                      onChange={onChange}
+                      required
+                      disabled={isEdit}
+                    />
+                  </div>
 
-              {!isEdit && (
-                <div className="form-group">
-                  <label htmlFor="password">Password</label>
-                  <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={password}
-                    onChange={onChange}
-                    required={!isEdit}
-                    minLength="6"
-                  />
-                  <small className="form-text">
-                    Minimum 6 characters
-                  </small>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label htmlFor="organization">Organization</label>
-                <input
-                  type="text"
-                  id="organization"
-                  name="organization"
-                  value={organization}
-                  onChange={onChange}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="jobTitle">Job Title</label>
-                <input
-                  type="text"
-                  id="jobTitle"
-                  name="jobTitle"
-                  value={jobTitle}
-                  onChange={onChange}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="role">Role</label>
-                <select
-                  id="role"
-                  name="role"
-                  value={role}
-                  onChange={onChange}
-                  required
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-
-              <div className="admin-form-buttons">
-                <button type="submit" className="btn">
-                  {isEdit ? 'Update User' : 'Create User'}
-                </button>
-                {isEdit && (
-                  <button
-                    type="button"
-                    className="btn btn-light"
-                    onClick={resetForm}
-                  >
-                    Cancel
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-
-          <div className="admin-section card">
-            <h2>User Management</h2>
-            <div className="admin-users-list">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.length > 0 ? (
-                    users.map((user) => (
-                      <tr key={user._id}>
-                        <td>{user.firstName} {user.lastName}</td>
-                        <td>{user.email}</td>
-                        <td>{user.role}</td>
-                        <td>
-                          <button
-                            className="btn btn-sm"
-                            onClick={() => onSelectUser(user)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-sm btn-danger"
-                            onClick={() => onDelete(user._id)}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4">No users found</td>
-                    </tr>
+                  {!isEdit && (
+                    <div className="form-group">
+                      <label htmlFor="password">Password</label>
+                      <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        value={password}
+                        onChange={onChange}
+                        required={!isEdit}
+                        minLength="6"
+                      />
+                      <small className="form-text">
+                        Minimum 6 characters
+                      </small>
+                    </div>
                   )}
-                </tbody>
-              </table>
+
+                  <div className="form-group">
+                    <label htmlFor="organization">Organization</label>
+                    <input
+                      type="text"
+                      id="organization"
+                      name="organization"
+                      value={organization}
+                      onChange={onChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="jobTitle">Job Title</label>
+                    <input
+                      type="text"
+                      id="jobTitle"
+                      name="jobTitle"
+                      value={jobTitle}
+                      onChange={onChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="role">Role</label>
+                    <select
+                      id="role"
+                      name="role"
+                      value={role}
+                      onChange={onChange}
+                      required
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+
+                  <div className="admin-form-buttons">
+                    <button type="submit" className="btn">
+                      {isEdit ? 'Update User' : 'Create User'}
+                    </button>
+                    {isEdit && (
+                      <button
+                        type="button"
+                        className="btn btn-light"
+                        onClick={resetForm}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              <div className="admin-section card">
+                <h2>User Management</h2>
+                <div className="admin-users-list">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.length > 0 ? (
+                        users.map((user) => (
+                          <tr key={user._id}>
+                            <td>{user.firstName} {user.lastName}</td>
+                            <td>{user.email}</td>
+                            <td>{user.role}</td>
+                            <td>
+                              <button
+                                className="btn btn-sm"
+                                onClick={() => onSelectUser(user)}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => onDelete(user._id)}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4">No users found</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <QuestionsManager />
+        )}
       </div>
     </MainLayout>
   );

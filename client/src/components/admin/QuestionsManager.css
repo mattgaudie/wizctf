@@ -1,0 +1,91 @@
+.questions-manager {
+  margin-top: 2rem;
+}
+
+.questions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 1.5rem;
+}
+
+.questions-form textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.question-form-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.questions-list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.questions-list th,
+.questions-list td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.questions-list th {
+  background-color: var(--primary-color);
+  color: var(--text-color);
+}
+
+.question-inactive {
+  opacity: 0.6;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-easy {
+  background-color: #10b981;
+  color: white;
+}
+
+.badge-medium {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.badge-hard {
+  background-color: #ef4444;
+  color: white;
+}
+
+.badge-success {
+  background-color: #10b981;
+  color: white;
+}
+
+.badge-danger {
+  background-color: #ef4444;
+  color: white;
+}
+
+.form-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-checkbox input[type="checkbox"] {
+  width: auto;
+}
+
+@media (max-width: 768px) {
+  .questions-grid {
+    grid-template-columns: 1fr;
+  }
+}
