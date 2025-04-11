@@ -1,0 +1,4 @@
+{
+    "mongoURI": "mongodb+srv://main_user:coolpassword123@wizctf.9dko8hd.mongodb.net/?retryWrites=true&w=majority&appName=wizctf",
+    "jwtSecret": "mysecrettoken"
+}

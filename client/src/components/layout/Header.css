@@ -1,0 +1,54 @@
+.header {
+    padding: 1rem 0;
+    box-shadow: var(--box-shadow);
+  }
+  
+  .header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .header .logo h1 {
+    font-size: 1.8rem;
+    color: var(--text-color);
+    margin: 0;
+  }
+  
+  .header nav ul {
+    display: flex;
+  }
+  
+  .header nav ul li {
+    margin-left: 1.5rem;
+  }
+  
+  .header nav ul li a {
+    color: var(--text-color);
+    font-weight: 500;
+    transition: opacity 0.3s;
+  }
+  
+  .header nav ul li a:hover {
+    opacity: 0.8;
+    color: var(--text-color);
+  }
+  
+  @media (max-width: 768px) {
+    .header .container {
+      flex-direction: column;
+    }
+    
+    .header nav {
+      margin-top: 1rem;
+    }
+    
+    .header nav ul {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .header nav ul li {
+      margin: 0.5rem;
+    }
+  }
