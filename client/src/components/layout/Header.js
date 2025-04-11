@@ -13,9 +13,6 @@ const Header = () => {
   const authLinks = (
     <ul>
       <li>
-        <Link to="/dashboard">Dashboard</Link>
-      </li>
-      <li>
         <Link to="/profile">Profile</Link>
       </li>
       {user && user.role === 'admin' && (

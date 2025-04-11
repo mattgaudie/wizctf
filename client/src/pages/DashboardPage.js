@@ -29,7 +29,7 @@ const DashboardPage = () => {
     <MainLayout>
       <div className="dashboard-container">
         <div className="dashboard-header">
-          <h1>Dashboard</h1>
+          <h1>Game Server</h1>
           <p>Welcome, {user.firstName} {user.lastName}</p>
         </div>
 

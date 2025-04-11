@@ -7,6 +7,7 @@ import * as userService from '../services/user.service.js';
 import MainLayout from '../components/layout/MainLayout.js';
 import QuestionsManager from '../components/admin/QuestionsManager.js';
 import QuestionSetsManager from '../components/admin/QuestionSetsManager.js';
+import EventsManager from '../components/admin/EventsManager.js';
 import './AdminPage.css';
 
 const AdminPage = () => {
@@ -187,6 +188,12 @@ const AdminPage = () => {
           >
             Question Sets
           </button>
+          <button 
+            className={`admin-tab ${activeTab === 'events' ? 'active' : ''}`}
+            onClick={() => setActiveTab('events')}
+          >
+            Events
+          </button>
         </div>
 
         {activeTab === 'users' && (
@@ -354,6 +361,8 @@ const AdminPage = () => {
         {activeTab === 'questions' && <QuestionsManager />}
         
         {activeTab === 'questionSets' && <QuestionSetsManager />}
+        
+        {activeTab === 'events' && <EventsManager />}
       </div>
     </MainLayout>
   );

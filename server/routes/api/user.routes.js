@@ -3,7 +3,7 @@ const router = Router();
 import { check } from 'express-validator';
 import { updateProfile, uploadProfilePicture, deleteUser } from '../../controllers/user.controller.js';
 import auth from '../../middleware/auth.middleware.js';
-import upload from '../../middleware/upload.middleware.js';
+import { uploadProfile } from '../../middleware/upload.middleware.js';
 
 // @route   PUT api/users/profile
 // @desc    Update user profile
@@ -25,7 +25,7 @@ router.put(
 // @access  Private
 router.post(
   '/profile-picture',
-  [auth, upload.single('profilePicture')],
+  [auth, uploadProfile.single('profilePicture')],
   uploadProfilePicture
 );
 

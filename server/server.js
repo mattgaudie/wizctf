@@ -27,12 +27,14 @@ import userRoutes from './routes/api/user.routes.js';
 import adminRoutes from './routes/api/admin.routes.js';
 import questionRoutes from './routes/api/question.routes.js';
 import questionSetRoutes from './routes/api/questionSet.routes.js';
+import eventRoutes from './routes/api/event.routes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/questionSets', questionSetRoutes);
+app.use('/api/events', eventRoutes);
 
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
