@@ -9,6 +9,23 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Get events for the authenticated user
+export async function getUserEvents(req, res) {
+  try {
+    // Find events where the user is a participant
+    const events = await Event.find({
+      'participants.user': req.user.id
+    })
+    .populate('questionSet', 'title')
+    .sort({ eventDate: -1 });
+    
+    res.json(events);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+}
+
 // Get all events (admin only)
 export async function getAllEvents(req, res) {
   try {
@@ -22,7 +39,7 @@ export async function getAllEvents(req, res) {
   }
 }
 
-// Get event by ID (admin only)
+// Get event by ID (admin or participant)
 export async function getEventById(req, res) {
   try {
     const event = await Event.findById(req.params.id)
@@ -31,6 +48,14 @@ export async function getEventById(req, res) {
     
     if (!event) {
       return res.status(404).json({ msg: 'Event not found' });
+    }
+    
+    // Check if user is admin or participant in this event
+    const isAdmin = req.user.role === 'admin';
+    const isParticipant = event.participants.some(p => p.user._id.toString() === req.user.id);
+    
+    if (!isAdmin && !isParticipant) {
+      return res.status(403).json({ msg: 'Access denied' });
     }
     
     res.json(event);

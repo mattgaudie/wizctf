@@ -91,13 +91,22 @@ export const AuthProvider = ({ children }) => {
   const register = async (formData) => {
     try {
       const userData = await authService.register(formData);
-
+      
+      // Store token in localStorage first
+      if (userData.token) {
+        localStorage.setItem('token', userData.token);
+      }
+      
+      // Fetch the complete user data from MongoDB
+      const fullUserData = await authService.getCurrentUser();
+      
       dispatch({
         type: 'REGISTER_SUCCESS',
-        payload: userData
+        payload: {
+          token: userData.token,
+          user: fullUserData || userData.user || null
+        }
       });
-      
-      loadUser();
     } catch (err) {
       dispatch({
         type: 'REGISTER_FAIL',
@@ -110,13 +119,25 @@ export const AuthProvider = ({ children }) => {
   const login = async (formData) => {
     try {
       const userData = await authService.login(formData);
-
+      
+      // Store token in localStorage first
+      if (userData.token) {
+        localStorage.setItem('token', userData.token);
+      }
+      
+      // Fetch the complete user data from MongoDB
+      const fullUserData = await authService.getCurrentUser();
+      
+      // If login response has user data but getCurrentUser failed, use what we have
+      const userToUse = fullUserData || userData.user;
+      
       dispatch({
         type: 'LOGIN_SUCCESS',
-        payload: userData
+        payload: {
+          token: userData.token,
+          user: userToUse
+        }
       });
-      
-      // No need to call loadUser since we already have user data
     } catch (err) {
       dispatch({
         type: 'LOGIN_FAIL',

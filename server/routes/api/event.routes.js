@@ -1,65 +1,69 @@
 import { Router } from 'express';
-const router = Router();
-import { check } from 'express-validator';
-import { 
-  getAllEvents, 
-  getEventById, 
-  createEvent, 
-  updateEvent, 
-  deleteEvent, 
+import {
+  getAllEvents,
+  getEventById,
+  createEvent,
+  updateEvent,
+  deleteEvent,
   joinEvent,
-  getEventParticipants
+  getEventParticipants,
+  getUserEvents
 } from '../../controllers/event.controller.js';
 import auth from '../../middleware/auth.middleware.js';
-import { isAdmin } from '../../middleware/auth.middleware.js';
-import { uploadEvent } from '../../middleware/upload.middleware.js';
+import { isAdmin } from '../../middleware/admin.middleware.js';
+import { uploadEvent as upload } from '../../middleware/upload.middleware.js';
+import { check } from 'express-validator';
+
+const router = Router();
 
 // @route   GET api/events
 // @desc    Get all events (admin only)
-// @access  Admin
+// @access  Private/Admin
 router.get('/', [auth, isAdmin], getAllEvents);
 
+// @route   GET api/events/user
+// @desc    Get events for the authenticated user
+// @access  Private
+router.get('/user', auth, getUserEvents);
+
 // @route   GET api/events/:id
-// @desc    Get event by ID (admin only)
-// @access  Admin
-router.get('/:id', [auth, isAdmin], getEventById);
+// @desc    Get event by ID (admin only or participant)
+// @access  Private
+router.get('/:id', auth, getEventById);
 
 // @route   POST api/events
-// @desc    Create an event (admin only)
-// @access  Admin
+// @desc    Create a new event (admin only)
+// @access  Private/Admin
 router.post(
   '/',
   [
     auth,
     isAdmin,
-    uploadEvent.single('eventImage'),
+    upload.single('image'),
     [
       check('name', 'Name is required').not().isEmpty(),
       check('questionSet', 'Question set is required').not().isEmpty(),
       check('eventCode', 'Event code is required').not().isEmpty(),
-      check('eventDate', 'Event date is required').not().isEmpty().isISO8601(),
-      check('duration', 'Duration must be a positive number').optional().isInt({ min: 1 })
+      check('eventDate', 'Event date is required').not().isEmpty()
     ]
   ],
   createEvent
 );
 
 // @route   PUT api/events/:id
-// @desc    Update an event (admin only)
-// @access  Admin
+// @desc    Update an existing event (admin only)
+// @access  Private/Admin
 router.put(
   '/:id',
   [
     auth,
     isAdmin,
-    uploadEvent.single('eventImage'),
+    upload.single('image'),
     [
-      check('name', 'Name is required').optional().not().isEmpty(),
-      check('questionSet', 'Question set is required').optional().not().isEmpty(),
-      check('eventCode', 'Event code is required').optional().not().isEmpty(),
-      check('eventDate', 'Event date must be valid').optional().isISO8601(),
-      check('duration', 'Duration must be a positive number').optional().isInt({ min: 1 }),
-      check('active', 'Active must be a boolean').optional().isBoolean()
+      check('name', 'Name is required').not().isEmpty(),
+      check('questionSet', 'Question set is required').not().isEmpty(),
+      check('eventCode', 'Event code is required').not().isEmpty(),
+      check('eventDate', 'Event date is required').not().isEmpty()
     ]
   ],
   updateEvent
@@ -67,11 +71,11 @@ router.put(
 
 // @route   DELETE api/events/:id
 // @desc    Delete an event (admin only)
-// @access  Admin
+// @access  Private/Admin
 router.delete('/:id', [auth, isAdmin], deleteEvent);
 
 // @route   POST api/events/join
-// @desc    Join an event with event code (users)
+// @desc    Join an event using an event code
 // @access  Private
 router.post(
   '/join',
@@ -85,8 +89,8 @@ router.post(
 );
 
 // @route   GET api/events/:id/participants
-// @desc    Get participants for an event (admin only)
-// @access  Admin
+// @desc    Get all participants for an event (admin only)
+// @access  Private/Admin
 router.get('/:id/participants', [auth, isAdmin], getEventParticipants);
 
 export default router;

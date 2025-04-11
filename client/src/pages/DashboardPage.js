@@ -55,6 +55,9 @@ const DashboardPage = () => {
           <div className="card dashboard-card">
             <h2>Quick Actions</h2>
             <div className="dashboard-actions">
+              <button className="btn" onClick={() => navigate('/events')}>
+                Events
+              </button>
               <button className="btn" onClick={() => navigate('/profile')}>
                 Update Profile
               </button>
