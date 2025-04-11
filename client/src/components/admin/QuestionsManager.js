@@ -130,7 +130,7 @@ const QuestionsManager = () => {
 
   return (
     <div className="questions-manager">
-      <h2>Questions Management</h2>
+      <h2>Question Management</h2>
       
       {alert.msg && (
         <div className={`alert alert-${alert.type}`}>

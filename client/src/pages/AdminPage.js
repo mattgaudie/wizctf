@@ -6,6 +6,7 @@ import * as adminService from '../services/admin.service.js';
 import * as userService from '../services/user.service.js';
 import MainLayout from '../components/layout/MainLayout.js';
 import QuestionsManager from '../components/admin/QuestionsManager.js';
+import QuestionSetsManager from '../components/admin/QuestionSetsManager.js';
 import './AdminPage.css';
 
 const AdminPage = () => {
@@ -178,11 +179,17 @@ const AdminPage = () => {
             className={`admin-tab ${activeTab === 'questions' ? 'active' : ''}`}
             onClick={() => setActiveTab('questions')}
           >
-            Questions Management
+            Question Management
+          </button>
+          <button 
+            className={`admin-tab ${activeTab === 'questionSets' ? 'active' : ''}`}
+            onClick={() => setActiveTab('questionSets')}
+          >
+            Question Sets
           </button>
         </div>
 
-        {activeTab === 'users' ? (
+        {activeTab === 'users' && (
           <div className="admin-section">
             <div className="admin-grid">
               <div className="admin-section card">
@@ -342,9 +349,11 @@ const AdminPage = () => {
               </div>
             </div>
           </div>
-        ) : (
-          <QuestionsManager />
         )}
+        
+        {activeTab === 'questions' && <QuestionsManager />}
+        
+        {activeTab === 'questionSets' && <QuestionSetsManager />}
       </div>
     </MainLayout>
   );
