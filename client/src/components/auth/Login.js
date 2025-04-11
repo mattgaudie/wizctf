@@ -22,7 +22,7 @@ const Login = () => {
   useEffect(() => {
     // Redirect if authenticated
     if (isAuthenticated) {
-      navigate('/dashboard');
+      navigate('/');
     }
 
     // Display error if exists

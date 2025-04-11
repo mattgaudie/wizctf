@@ -40,11 +40,16 @@ app.use('/api/events', eventRoutes);
 if (process.env.NODE_ENV === 'production') {
   // Set static folder
   app.use(express.static(join(__dirname, '../client/build')));
-
-  app.get('*', (req, res) => {
-    res.sendFile(resolve(__dirname, '../client/build', 'index.html'));
-  });
 }
+
+// Handle SPA routing in all environments
+app.get('*', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.sendFile(resolve(__dirname, '../client/build', 'index.html'));
+  } else {
+    res.sendFile(resolve(__dirname, '../client/public/index.html'));
+  }
+});
 
 const PORT = process.env.PORT || 5000;
 
