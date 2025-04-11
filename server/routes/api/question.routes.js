@@ -28,8 +28,8 @@ router.post(
       check('description', 'Description is required').not().isEmpty(),
       check('points', 'Points must be a positive number').isInt({ min: 1 }),
       check('difficulty', 'Difficulty must be easy, medium, or hard').isIn(['easy', 'medium', 'hard']),
-      check('environment', 'Environment is required').not().isEmpty(),
-      check('wizProduct', 'Wiz Product is required').isIn(['Wiz Cloud', 'Wiz Code', 'Wiz Defend', 'Wiz Sensor'])
+      check('wizProduct', 'Wiz Product is required').isIn(['Wiz Cloud', 'Wiz Code', 'Wiz Defend', 'Wiz Sensor']),
+      check('answer', 'Answer is required').not().isEmpty()
     ]
   ],
   createQuestion
@@ -48,8 +48,8 @@ router.put(
       check('description', 'Description is required').optional().not().isEmpty(),
       check('points', 'Points must be a positive number').optional().isInt({ min: 1 }),
       check('difficulty', 'Difficulty must be easy, medium, or hard').optional().isIn(['easy', 'medium', 'hard']),
-      check('environment', 'Environment is required').optional().not().isEmpty(),
       check('wizProduct', 'Wiz Product is required').optional().isIn(['Wiz Cloud', 'Wiz Code', 'Wiz Defend', 'Wiz Sensor']),
+      check('answer', 'Answer is required').optional().not().isEmpty(),
       check('active', 'Active must be a boolean').optional().isBoolean()
     ]
   ],

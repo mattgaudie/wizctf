@@ -20,19 +20,23 @@ const QuestionSchema = new Schema({
     required: true,
     enum: ['easy', 'medium', 'hard']
   },
-  environment: {
-    type: String,
-    required: true,
-    trim: true
-  },
   wizProduct: {
     type: String,
     required: true,
     enum: ['Wiz Cloud', 'Wiz Code', 'Wiz Defend', 'Wiz Sensor']
   },
+  answer: {
+    type: String,
+    required: true,
+    trim: true
+  },
   createdBy: {
     type: Schema.Types.ObjectId,
     ref: 'User',
+    required: true
+  },
+  creatorEmail: {
+    type: String,
     required: true
   },
   createdAt: {

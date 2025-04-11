@@ -16,12 +16,12 @@ const QuestionsManager = () => {
     description: '',
     points: 100,
     difficulty: 'medium',
-    environment: '',
     wizProduct: 'Wiz Cloud',
+    answer: '',
     active: true
   });
 
-  const { title, description, points, difficulty, environment, wizProduct, active } = formData;
+  const { title, description, points, difficulty, wizProduct, answer, active } = formData;
 
   useEffect(() => {
     fetchQuestions();
@@ -38,7 +38,27 @@ const QuestionsManager = () => {
 
   const onChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    
+    // Set points based on difficulty selection
+    if (e.target.name === 'difficulty') {
+      let points;
+      switch (value) {
+        case 'easy':
+          points = 50;
+          break;
+        case 'medium':
+          points = 100;
+          break;
+        case 'hard':
+          points = 150;
+          break;
+        default:
+          points = 100;
+      }
+      setFormData({ ...formData, [e.target.name]: value, points });
+    } else {
+      setFormData({ ...formData, [e.target.name]: value });
+    }
   };
 
   const resetForm = () => {
@@ -47,8 +67,8 @@ const QuestionsManager = () => {
       description: '',
       points: 100,
       difficulty: 'medium',
-      environment: '',
       wizProduct: 'Wiz Cloud',
+      answer: '',
       active: true
     });
     setIsEdit(false);
@@ -62,8 +82,8 @@ const QuestionsManager = () => {
       description: question.description || '',
       points: question.points || 100,
       difficulty: question.difficulty || 'medium',
-      environment: question.environment || '',
       wizProduct: question.wizProduct || 'Wiz Cloud',
+      answer: question.answer || '',
       active: question.active !== undefined ? question.active : true
     });
     setIsEdit(true);
@@ -147,6 +167,18 @@ const QuestionsManager = () => {
             </div>
             
             <div className="form-group">
+              <label htmlFor="answer">Correct Answer</label>
+              <input
+                type="text"
+                id="answer"
+                name="answer"
+                value={answer}
+                onChange={onChange}
+                required
+              />
+            </div>
+            
+            <div className="form-group">
               <label htmlFor="points">Points</label>
               <input
                 type="number"
@@ -172,19 +204,6 @@ const QuestionsManager = () => {
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
               </select>
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="environment">Environment</label>
-              <input
-                type="text"
-                id="environment"
-                name="environment"
-                value={environment}
-                onChange={onChange}
-                required
-                placeholder="Which Wiz tenant was used"
-              />
             </div>
             
             <div className="form-group">
@@ -242,7 +261,6 @@ const QuestionsManager = () => {
                   <th>Title</th>
                   <th>Difficulty</th>
                   <th>Points</th>
-                  <th>Environment</th>
                   <th>Wiz Product</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -258,7 +276,6 @@ const QuestionsManager = () => {
                       </span>
                     </td>
                     <td>{question.points}</td>
-                    <td>{question.environment}</td>
                     <td>{question.wizProduct}</td>
                     <td>
                       <span className={`badge ${question.active ? 'badge-success' : 'badge-danger'}`}>

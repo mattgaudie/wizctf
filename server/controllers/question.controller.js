@@ -1,4 +1,5 @@
 import Question from '../models/Question.js';
+import User from '../models/User.js';
 import { validationResult } from 'express-validator';
 
 // Get all questions (admin only)
@@ -39,18 +40,25 @@ export async function createQuestion(req, res) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { title, description, points, difficulty, environment, wizProduct } = req.body;
+  const { title, description, points, difficulty, wizProduct, answer } = req.body;
 
   try {
+    // Get the user's email from their ID
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
     // Create new question
     const newQuestion = new Question({
       title,
       description,
       points,
       difficulty,
-      environment,
       wizProduct,
-      createdBy: req.user.id
+      answer,
+      createdBy: req.user.id,
+      creatorEmail: user.email
     });
 
     // Save question to database
@@ -71,7 +79,7 @@ export async function updateQuestion(req, res) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { title, description, points, difficulty, environment, wizProduct, active } = req.body;
+  const { title, description, points, difficulty, wizProduct, answer, active } = req.body;
 
   // Build question object
   const questionFields = {};
@@ -79,8 +87,8 @@ export async function updateQuestion(req, res) {
   if (description) questionFields.description = description;
   if (points) questionFields.points = points;
   if (difficulty) questionFields.difficulty = difficulty;
-  if (environment) questionFields.environment = environment;
   if (wizProduct) questionFields.wizProduct = wizProduct;
+  if (answer) questionFields.answer = answer;
   if (active !== undefined) questionFields.active = active;
   questionFields.updatedAt = Date.now();
 
