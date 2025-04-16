@@ -14,9 +14,18 @@ const EventDetailPage = () => {
   
   const [event, setEvent] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentAnswers, setCurrentAnswers] = useState({});
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [answeredQuestions, setAnsweredQuestions] = useState([]);
+  
+  // For debugging
+  useEffect(() => {
+    console.log("Current expandedCategories state:", expandedCategories);
+    console.log("Categories data:", categories);
+  }, [expandedCategories, categories]);
 
   useEffect(() => {
     // Redirect if not authenticated
@@ -44,10 +53,19 @@ const EventDetailPage = () => {
       if (eventData.questionSet && Array.isArray(eventData.questionSet.categories)) {
         console.log('Using embedded question data from event');
         
-        // Flatten questions from all categories
+        // Prepare categorized questions
         const allQuestions = [];
+        const categorizedQuestions = [];
         
-        eventData.questionSet.categories.forEach(category => {
+        // Create new expanded state
+        const newExpandedState = {};
+        
+        // Process each category
+        eventData.questionSet.categories.forEach((category, categoryIndex) => {
+          // Set default expanded state for category (expand all by default)
+          const categoryId = category.name || `category-${categoryIndex}`;
+          newExpandedState[categoryId] = true;
+          
           if (category.questions && Array.isArray(category.questions)) {
             // Map each question to add category and standardize format
             const categoryQuestions = category.questions.map(q => ({
@@ -61,15 +79,39 @@ const EventDetailPage = () => {
               // Don't include the answer in the client-facing data
             }));
             
+            // Add to flat list of all questions
             allQuestions.push(...categoryQuestions);
+            
+            // Add to categorized structure
+            if (categoryQuestions.length > 0) {
+              categorizedQuestions.push({
+                name: category.name,
+                description: category.description,
+                questions: categoryQuestions
+              });
+            }
           }
         });
         
-        console.log(`Extracted ${allQuestions.length} questions from embedded data`);
-        setQuestions(allQuestions);
+        console.log(`Extracted ${allQuestions.length} questions in ${categorizedQuestions.length} categories`);
+        setQuestions(allQuestions); // Keep flat list for compatibility
+        setCategories(categorizedQuestions); // Set categorized questions
+        setExpandedCategories(newExpandedState);
+        
+        // Check for answered questions if event has participants field
+        if (eventData.participants && Array.isArray(eventData.participants) && user) {
+          const currentUser = eventData.participants.find(
+            p => p.email === user.email || p.userId === user._id
+          );
+          
+          if (currentUser && Array.isArray(currentUser.answeredQuestions)) {
+            setAnsweredQuestions(currentUser.answeredQuestions);
+          }
+        }
       } else {
         console.warn('No embedded question data available in event');
         setQuestions([]);
+        setCategories([]);
       }
     } catch (err) {
       console.error('Error fetching event details:', err);
@@ -98,6 +140,26 @@ const EventDetailPage = () => {
       ...currentAnswers,
       [questionId]: answer
     });
+  };
+
+  const toggleCategoryExpansion = (categoryId) => {
+    console.log(`Toggling category: ${categoryId}`);
+    console.log(`Current state:`, expandedCategories);
+    
+    // Force re-render by creating a new object
+    setExpandedCategories(prev => {
+      // Create new object with all existing values
+      const newState = {...prev};
+      // Toggle the value for this category
+      newState[categoryId] = !prev[categoryId];
+      
+      console.log("New state will be:", newState);
+      return newState;
+    });
+  };
+
+  const isQuestionAnswered = (questionId) => {
+    return answeredQuestions.includes(questionId);
   };
 
   const handleSubmitAnswer = async (questionId) => {
@@ -145,6 +207,11 @@ const EventDetailPage = () => {
       if (data.correct) {
         const pointsMsg = data.points ? ` (${data.points} points)` : '';
         alert(`Correct answer!${pointsMsg}`);
+        
+        // Add question to answered questions list
+        if (!answeredQuestions.includes(questionId)) {
+          setAnsweredQuestions(prev => [...prev, questionId]);
+        }
       } else {
         alert('Incorrect answer. Try again!');
       }
@@ -218,79 +285,167 @@ const EventDetailPage = () => {
           </p>
         </div>
 
-        {event.description && (
-          <div className="card dashboard-card">
-            <h2>Description</h2>
-            <p>{event.description}</p>
-          </div>
-        )}
+        <div className="event-details-layout">
+          {event.description && (
+            <div className="card event-description-card">
+              <h2>Description</h2>
+              <p>{event.description}</p>
+            </div>
+          )}
 
-        <div className="dashboard-content">
-          <div className="card dashboard-card">
-            <h2>Questions</h2>
-            {!Array.isArray(questions) || questions.length === 0 ? (
-              <p>No questions available for this event.</p>
-            ) : (
-              <div className="questions-list">
-                {questions.map((question, index) => {
-                  if (!question || !question._id) {
-                    console.warn('Invalid question data:', question);
-                    return null;
-                  }
-                  
-                  return (
-                    <div key={question._id} className="question-item">
-                      <h3>Question {index + 1}</h3>
-                      <p>{question.text || 'No question text available'}</p>
-                      
-                      {question.imageUrl && (
-                        <div className="question-image">
-                          <img src={question.imageUrl} alt={`Question ${index + 1}`} />
+          <div className="questions-container" style={{ width: '100%', overflow: 'visible' }}>
+            <div className="card full-width-card" style={{ width: '100%', maxWidth: '100%', overflow: 'visible' }}>
+              <h2>Questions</h2>
+              {!Array.isArray(categories) || categories.length === 0 ? (
+                <p>No questions available for this event.</p>
+              ) : (
+                <div className="categories-list" style={{ width: '100%', overflow: 'visible' }}>
+                  {categories.map((category, categoryIndex) => {
+                    const categoryId = category.name || `category-${categoryIndex}`;
+                    const isExpanded = expandedCategories[categoryId];
+                    
+                    return (
+                      <div key={categoryIndex} className="category-container">
+                        <div 
+                          className="category-header" 
+                          onClick={() => toggleCategoryExpansion(categoryId)}
+                          style={{ cursor: 'pointer', userSelect: 'none' }}
+                        >
+                          <h3>
+                            {category.name} 
+                            <span style={{ marginLeft: '8px', fontSize: '1rem' }}>
+                              {isExpanded ? '▼' : '►'}
+                            </span>
+                          </h3>
+                          <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                            {category.description && (
+                              <p className="category-description">{category.description}</p>
+                            )}
+                            <span style={{ 
+                              backgroundColor: '#e6f3ff', 
+                              color: '#0064c8',
+                              borderRadius: '4px',
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.8rem'
+                            }}>
+                              {category.questions.length} questions
+                            </span>
+                            <span style={{ 
+                              backgroundColor: '#e6fff2', 
+                              color: '#007755',
+                              borderRadius: '4px',
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.8rem'
+                            }}>
+                              {category.questions.filter(q => isQuestionAnswered(q._id)).length} solved
+                            </span>
+                          </div>
                         </div>
-                      )}
-                      
-                      {Array.isArray(question.options) && question.options.length > 0 ? (
-                        // Multiple choice question
-                        <div className="options-list">
-                          {question.options.map((option, optIndex) => (
-                            <div key={optIndex} className="option-item">
-                              <input
-                                type="radio"
-                                id={`option-${question._id}-${optIndex}`}
-                                name={`question-${question._id}`}
-                                value={option}
-                                checked={currentAnswers[question._id] === option}
-                                onChange={() => handleAnswerChange(question._id, option)}
-                              />
-                              <label htmlFor={`option-${question._id}-${optIndex}`}>
-                                {option}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        // Free text answer
-                        <div className="answer-input">
-                          <input
-                            type="text"
-                            placeholder="Enter your answer"
-                            value={currentAnswers[question._id] || ''}
-                            onChange={(e) => handleAnswerChange(question._id, e.target.value)}
-                          />
-                        </div>
-                      )}
-                      
-                      <button 
-                        className="btn btn-small"
-                        onClick={() => handleSubmitAnswer(question._id)}
-                      >
-                        Submit Answer
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                        
+                        {isExpanded && (
+                          <div className="questions-list">
+                            {category.questions.map((question, questionIndex) => {
+                              if (!question || !question._id) {
+                                console.warn('Invalid question data:', question);
+                                return null;
+                              }
+                              
+                              const isAnswered = isQuestionAnswered(question._id);
+                              
+                              return (
+                                <div 
+                                  key={question._id} 
+                                  className={`question-item ${isAnswered ? 'completed' : ''}`}
+                                  style={{ position: 'relative' }}
+                                >
+                                  {isAnswered && (
+                                    <div className="question-status" title="Completed">
+                                      ✓
+                                    </div>
+                                  )}
+                                  
+                                  <div className="question-header">
+                                    <h4>{question.title || `Question ${questionIndex + 1}`}</h4>
+                                    <div className="question-meta">
+                                      <span className="question-points">{question.points} points</span>
+                                      <span className="question-difficulty">{question.difficulty}</span>
+                                      <span className="question-product">{question.wizProduct}</span>
+                                    </div>
+                                  </div>
+                                  
+                                  <p className="question-text">{question.text || 'No question text available'}</p>
+                                  
+                                  {question.imageUrl && (
+                                    <div className="question-image">
+                                      <img src={question.imageUrl} alt={`${question.title}`} />
+                                    </div>
+                                  )}
+                                  
+                                  {!isAnswered && (
+                                    <>
+                                      {Array.isArray(question.options) && question.options.length > 0 ? (
+                                        // Multiple choice question
+                                        <div className="options-list">
+                                          {question.options.map((option, optIndex) => (
+                                            <div key={optIndex} className="option-item">
+                                              <input
+                                                type="radio"
+                                                id={`option-${question._id}-${optIndex}`}
+                                                name={`question-${question._id}`}
+                                                value={option}
+                                                checked={currentAnswers[question._id] === option}
+                                                onChange={() => handleAnswerChange(question._id, option)}
+                                              />
+                                              <label htmlFor={`option-${question._id}-${optIndex}`}>
+                                                {option}
+                                              </label>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        // Free text answer
+                                        <div className="answer-input">
+                                          <input
+                                            type="text"
+                                            placeholder="Enter your answer"
+                                            value={currentAnswers[question._id] || ''}
+                                            onChange={(e) => handleAnswerChange(question._id, e.target.value)}
+                                          />
+                                        </div>
+                                      )}
+                                      
+                                      <button 
+                                        className="btn btn-small"
+                                        onClick={() => handleSubmitAnswer(question._id)}
+                                      >
+                                        Submit Answer
+                                      </button>
+                                    </>
+                                  )}
+                                  
+                                  {isAnswered && (
+                                    <div style={{ 
+                                      padding: '0.75rem', 
+                                      backgroundColor: '#e6fff2', 
+                                      borderRadius: '4px',
+                                      marginTop: '1rem'
+                                    }}>
+                                      <p style={{ margin: 0, color: '#007755' }}>
+                                        ✓ You've successfully completed this challenge!
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

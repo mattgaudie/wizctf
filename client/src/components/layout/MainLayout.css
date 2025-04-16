@@ -1,10 +1,22 @@
 .layout {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  position: relative; /* Added */
+}
   
-  .main-content {
-    flex: 1;
-    padding: 2rem 0;
-  }
+.main-content {
+  flex: 1;
+  padding: 2rem 0; /* Removed extra bottom padding */
+  width: 100%;
+}
+
+.container {
+  width: 100%;
+  max-width: 1400px; /* Increased from 1200px */
+  margin: 0 auto;
+  padding: 0 1rem 2rem 1rem; /* Added padding to bottom */
+  box-sizing: border-box;
+}

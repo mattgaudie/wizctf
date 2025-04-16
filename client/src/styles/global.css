@@ -48,6 +48,7 @@ img {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
+  overflow: visible; /* Added to ensure content can overflow if needed */
 }
 
 .btn {
@@ -182,6 +183,8 @@ table th {
   box-shadow: var(--box-shadow);
   padding: 1.5rem;
   margin: 1rem 0;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .flex {
