@@ -11,17 +11,45 @@ export async function updateProfile(req, res) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { firstName, lastName, organization, jobTitle } = req.body;
-
-  // Build profile object
-  const profileFields = {};
-  if (firstName) profileFields.firstName = firstName;
-  if (lastName) profileFields.lastName = lastName;
-  if (organization) profileFields.organization = organization;
-  if (jobTitle) profileFields.jobTitle = jobTitle;
-  profileFields.updatedAt = Date.now();
+  const { firstName, lastName, organization, jobTitle, displayName } = req.body;
 
   try {
+    // Get current user
+    const currentUser = await User.findById(req.user.id);
+    if (!currentUser) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    
+    // Build profile object
+    const profileFields = {};
+    if (firstName) profileFields.firstName = firstName;
+    if (lastName) profileFields.lastName = lastName;
+    if (organization) profileFields.organization = organization;
+    if (jobTitle) profileFields.jobTitle = jobTitle;
+    profileFields.updatedAt = Date.now();
+    
+    // Handle display name changes
+    if (displayName) {
+      // Check if display name is different from the current one
+      if (currentUser.displayName !== displayName) {
+        // Store current display name in history if it exists
+        if (currentUser.displayName) {
+          const update = {
+            $push: { 
+              displayNameHistory: {
+                value: currentUser.displayName,
+                changedAt: Date.now()
+              }
+            }
+          };
+          await User.findByIdAndUpdate(req.user.id, update);
+        }
+        
+        // Set the new display name
+        profileFields.displayName = displayName;
+      }
+    }
+    
     // Update user
     const user = await User.findByIdAndUpdate(
       req.user.id,

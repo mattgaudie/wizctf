@@ -125,20 +125,17 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('token', userData.token);
       }
       
-      // Fetch the complete user data from MongoDB
-      const fullUserData = await authService.getCurrentUser();
-      
-      // If login response has user data but getCurrentUser failed, use what we have
-      const userToUse = fullUserData || userData.user;
-      
+      // Use the user data directly from the login response
+      // It already has the displayName field set by the server
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: {
           token: userData.token,
-          user: userToUse
+          user: userData.user
         }
       });
     } catch (err) {
+      console.error('Login error:', err);
       dispatch({
         type: 'LOGIN_FAIL',
         payload: err.response?.data?.msg || 'Login failed'

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import MainLayout from '../components/layout/MainLayout.js';
+import * as eventService from '../services/event.service.js';
 import './DashboardPage.css';
 import './EventsPage.css';
+import './modal.css';
 
 const EventsPage = () => {
   const { isAuthenticated, user, loading: authLoading } = useAuth();
@@ -14,6 +16,7 @@ const EventsPage = () => {
   const [eventCode, setEventCode] = useState('');
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [joinError, setJoinError] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     // Redirect if not authenticated
@@ -28,25 +31,41 @@ const EventsPage = () => {
     try {
       setLoading(true);
       
-      // Get all events the user is participating in
-      const response = await fetch('/api/events/user', {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
+      // Use Promise.all to fetch both user events and active events in parallel
+      const [userEventsData, activeEventsData] = await Promise.all([
+        eventService.getUserEvents(),
+        eventService.getActiveEvents()
+      ]);
+      
+      // Save the user's events IDs to identify which events the user is registered for
+      const userEventIds = userEventsData.map(event => event._id);
+      
+      // Combine and deduplicate events
+      const eventMap = new Map();
+      
+      // First add user events (these take precedence)
+      userEventsData.forEach(event => {
+        event.isRegistered = true;
+        eventMap.set(event._id, event);
+      });
+      
+      // Then add active events that the user is not already part of
+      activeEventsData.forEach(event => {
+        if (!eventMap.has(event._id)) {
+          event.isRegistered = userEventIds.includes(event._id);
+          eventMap.set(event._id, event);
         }
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch events');
-      }
-      
-      const eventsData = await response.json();
+      // Convert map to array
+      const allEvents = Array.from(eventMap.values());
       
       // Separate into upcoming and past events
       const now = new Date();
       const upcoming = [];
       const past = [];
       
-      eventsData.forEach(event => {
+      allEvents.forEach(event => {
         const eventDate = new Date(event.eventDate);
         if (eventDate > now) {
           upcoming.push(event);
@@ -62,9 +81,12 @@ const EventsPage = () => {
       past.sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate));
       
       setEvents({ upcoming, past });
+      
+      // Log what we found
+      console.log(`Found ${upcoming.length} upcoming and ${past.length} past events`);
     } catch (err) {
       setError('Failed to load events. Please try again later.');
-      console.error(err);
+      console.error('Error fetching events:', err);
     } finally {
       setLoading(false);
     }
@@ -81,32 +103,27 @@ const EventsPage = () => {
     try {
       setJoinError(null);
       
-      const response = await fetch('/api/events/join', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': localStorage.getItem('token')
-        },
-        body: JSON.stringify({ eventCode })
-      });
+      // Use the event service to join the event
+      const data = await eventService.joinEvent(eventCode);
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        setJoinError(data.msg || 'Failed to join event');
-        return;
-      }
-      
-      // Clear the input and refetch events
+      // Clear the input and close the modal
       setEventCode('');
-      fetchEvents();
+      closeModal();
       
-      // Show success message or redirect to event
-      // For now, just show a message
+      // Show success message
       alert('Successfully joined event: ' + data.event.name);
+      
+      // Refresh the events list
+      await fetchEvents();
+      
+      // Navigate to the event page
+      if (data.event && data.event.id) {
+        navigate(`/events/${data.event.id}`);
+      }
     } catch (err) {
-      setJoinError('An error occurred. Please try again.');
-      console.error(err);
+      const errorMessage = err.response?.data?.msg || 'An error occurred. Please try again.';
+      setJoinError(errorMessage);
+      console.error('Error joining event:', err);
     }
   };
 
@@ -116,8 +133,24 @@ const EventsPage = () => {
   };
 
   const handleEventClick = (event) => {
-    // Navigate to event details page where users can see and answer questions
-    navigate(`/events/${event._id}`);
+    // Check if the user is already registered for this event
+    if (event.isRegistered) {
+      // User is already registered, navigate to event details
+      navigate(`/events/${event._id}`);
+    } else {
+      // User needs to join the event first, show modal
+      setSelectedEvent(event);
+      setEventCode('');
+      setJoinError(null);
+      setShowModal(true);
+    }
+  };
+  
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedEvent(null);
+    setEventCode('');
+    setJoinError(null);
   };
 
   if (loading) {
@@ -145,32 +178,6 @@ const EventsPage = () => {
         )}
 
         <div className="dashboard-content">
-          {/* Event Join Form */}
-          <div className="card dashboard-card">
-            <h2>Join an Event</h2>
-            <form onSubmit={handleJoinEvent}>
-              <div className="form-group">
-                <input
-                  type="text"
-                  placeholder="Enter Event Code"
-                  value={eventCode}
-                  onChange={(e) => setEventCode(e.target.value)}
-                  required
-                />
-              </div>
-              
-              {joinError && (
-                <div className="alert alert-danger">
-                  {joinError}
-                </div>
-              )}
-              
-              <button type="submit" className="btn">
-                Join Event
-              </button>
-            </form>
-          </div>
-
           {/* Upcoming Events */}
           <div className="card dashboard-card">
             <h2>Upcoming Events</h2>
@@ -236,6 +243,67 @@ const EventsPage = () => {
           </div>
         </div>
       </div>
+      
+      {/* Event Join Modal */}
+      {showModal && selectedEvent && (
+        <div className="modal-overlay">
+          <div className="modal-container">
+            <div className="modal-header">
+              <h2>Join Event</h2>
+              <button className="modal-close" onClick={closeModal}>&times;</button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="event-info">
+                {selectedEvent.imagePath ? (
+                  <img 
+                    src={selectedEvent.imagePath} 
+                    alt={selectedEvent.name} 
+                    className="event-logo" 
+                  />
+                ) : (
+                  <div className="event-placeholder event-logo">
+                    <span>{selectedEvent.name[0]}</span>
+                  </div>
+                )}
+                <h3>{selectedEvent.name}</h3>
+                <p><strong>Date:</strong> {formatDate(selectedEvent.eventDate)}</p>
+                <p><strong>Duration:</strong> {selectedEvent.duration} minutes</p>
+              </div>
+              
+              <p>Please enter the event code to join:</p>
+              
+              <form onSubmit={handleJoinEvent}>
+                <div className="form-group">
+                  <input
+                    type="text"
+                    placeholder="Enter Event Code"
+                    value={eventCode}
+                    onChange={(e) => setEventCode(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+                
+                {joinError && (
+                  <div className="alert alert-danger">
+                    {joinError}
+                  </div>
+                )}
+                
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-light" onClick={closeModal}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn">
+                    Join Event
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 };

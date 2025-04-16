@@ -161,6 +161,7 @@ const EventsManager = () => {
         setAlert({ msg: 'Event updated successfully', type: 'success' });
       } else {
         // Create new event
+        console.log('Submitting event data:', eventDataToSubmit);
         await eventService.createEvent(eventDataToSubmit);
         setAlert({ msg: 'Event created successfully', type: 'success' });
       }
@@ -169,7 +170,12 @@ const EventsManager = () => {
       fetchEvents();
       resetForm();
     } catch (err) {
-      setAlert({ msg: err.response?.data?.msg || 'Error processing event', type: 'danger' });
+      console.error('Error processing event:', err);
+      const errorDetails = err.response?.data?.msg || 
+                          (err.response?.data?.errors ? JSON.stringify(err.response.data.errors) : null) || 
+                          err.message || 
+                          'Unknown error';
+      setAlert({ msg: `Error processing event: ${errorDetails}`, type: 'danger' });
     }
   };
 

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getAllEvents,
+  getActiveEvents,
   getEventById,
   createEvent,
   updateEvent,
@@ -25,6 +26,11 @@ router.get('/', [auth, isAdmin], getAllEvents);
 // @desc    Get events for the authenticated user
 // @access  Private
 router.get('/user', auth, getUserEvents);
+
+// @route   GET api/events/active
+// @desc    Get all active events for regular users
+// @access  Private
+router.get('/active', auth, getActiveEvents);
 
 // @route   GET api/events/:id
 // @desc    Get event by ID (admin only or participant)

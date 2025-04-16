@@ -39,12 +39,27 @@ export async function getAllEvents(req, res) {
   }
 }
 
+// Get all active events (for regular users)
+export async function getActiveEvents(req, res) {
+  try {
+    // Get only active events
+    const events = await Event.find({ active: true })
+      .populate('questionSet', 'title')
+      .sort({ eventDate: -1 });
+    
+    res.json(events);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+}
+
 // Get event by ID (admin or participant)
 export async function getEventById(req, res) {
   try {
     const event = await Event.findById(req.params.id)
       .populate('questionSet', 'title categories')
-      .populate('participants.user', 'email firstName lastName');
+      .populate('participants.user', 'email firstName lastName organization');
     
     if (!event) {
       return res.status(404).json({ msg: 'Event not found' });
@@ -269,10 +284,25 @@ export async function joinEvent(req, res) {
       return res.status(400).json({ msg: 'You have already joined this event' });
     }
     
-    // Add user to participants
+    // Get user details
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    
+    // Use user's displayName if available, or generate one
+    const displayName = user.displayName || 
+      (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email.split('@')[0]);
+    
+    // Add user to participants with additional details
     event.participants.push({
       user: req.user.id,
-      joinedAt: Date.now()
+      joinedAt: Date.now(),
+      displayName,
+      email: user.email,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      organization: user.organization || ''
     });
     
     await event.save();
@@ -288,7 +318,7 @@ export async function joinEvent(req, res) {
 export async function getEventParticipants(req, res) {
   try {
     const event = await Event.findById(req.params.id)
-      .populate('participants.user', 'email firstName lastName profilePicture');
+      .populate('participants.user', 'email firstName lastName profilePicture organization');
     
     if (!event) {
       return res.status(404).json({ msg: 'Event not found' });

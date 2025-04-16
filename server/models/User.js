@@ -22,6 +22,20 @@ const UserSchema = new Schema({
     type: String,
     trim: true
   },
+  displayName: {
+    type: String,
+    trim: true
+  },
+  displayNameHistory: [{
+    value: {
+      type: String,
+      trim: true
+    },
+    changedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   profilePicture: {
     type: String,
     default: ''

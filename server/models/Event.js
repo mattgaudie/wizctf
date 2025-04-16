@@ -42,6 +42,26 @@ const EventSchema = new Schema({
     joinedAt: {
       type: Date,
       default: Date.now
+    },
+    displayName: {
+      type: String,
+      trim: true
+    },
+    email: {
+      type: String,
+      trim: true
+    },
+    firstName: {
+      type: String,
+      trim: true
+    },
+    lastName: {
+      type: String,
+      trim: true
+    },
+    organization: {
+      type: String,
+      trim: true
     }
   }],
   active: {

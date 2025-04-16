@@ -52,3 +52,13 @@ export const deleteQuestionSet = async (questionSetId) => {
     throw error;
   }
 };
+
+// Get all questions for a question set
+export const getQuestionSetQuestions = async (questionSetId) => {
+  try {
+    const response = await api.get(`${QUESTION_SETS_PATH}/${questionSetId}/questions`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

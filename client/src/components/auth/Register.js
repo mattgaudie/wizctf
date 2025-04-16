@@ -13,6 +13,7 @@ const Register = () => {
     email: '',
     password: '',
     password2: '',
+    displayName: '',
     organization: '',
     jobTitle: ''
   });
@@ -22,7 +23,7 @@ const Register = () => {
     type: ''
   });
 
-  const { firstName, lastName, email, password, password2, organization, jobTitle } = formData;
+  const { firstName, lastName, email, password, password2, displayName, organization, jobTitle } = formData;
 
   useEffect(() => {
     // Redirect if authenticated
@@ -62,6 +63,7 @@ const Register = () => {
       lastName,
       email,
       password,
+      displayName,
       organization,
       jobTitle
     });
@@ -134,6 +136,19 @@ const Register = () => {
               required
               minLength="6"
             />
+          </div>
+          
+          <div className="form-group">
+            <input
+              type="text"
+              placeholder="Display Name (optional)"
+              name="displayName"
+              value={displayName}
+              onChange={onChange}
+            />
+            <small className="form-text">
+              This is how you'll appear to others in events (defaults to your name)
+            </small>
           </div>
           
           <div className="form-group">

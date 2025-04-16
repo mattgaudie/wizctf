@@ -30,13 +30,16 @@ const DashboardPage = () => {
       <div className="dashboard-container">
         <div className="dashboard-header">
           <h1>Game Server</h1>
-          <p>Welcome, {user.firstName} {user.lastName}</p>
+          <p>Welcome, {user.displayName || `${user.firstName} ${user.lastName}`}</p>
         </div>
 
         <div className="dashboard-content">
           <div className="card dashboard-card">
             <h2>Your Information</h2>
             <div className="dashboard-info">
+              <p>
+                <strong>Display Name:</strong> {user.displayName || `${user.firstName} ${user.lastName}`}
+              </p>
               <p>
                 <strong>Email:</strong> {user.email}
               </p>

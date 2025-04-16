@@ -13,6 +13,7 @@ const ProfilePage = () => {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    displayName: '',
     organization: '',
     jobTitle: '',
     currentPassword: '',
@@ -38,6 +39,7 @@ const ProfilePage = () => {
       setFormData({
         firstName: user.firstName || '',
         lastName: user.lastName || '',
+        displayName: user.displayName || '',
         organization: user.organization || '',
         jobTitle: user.jobTitle || '',
         currentPassword: '',
@@ -47,7 +49,7 @@ const ProfilePage = () => {
     }
   }, [isAuthenticated, loading, navigate, user]);
 
-  const { firstName, lastName, organization, jobTitle, currentPassword, newPassword, confirmNewPassword } = formData;
+  const { firstName, lastName, displayName, organization, jobTitle, currentPassword, newPassword, confirmNewPassword } = formData;
 
   const onChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -63,6 +65,7 @@ const ProfilePage = () => {
       const res = await userService.updateProfile({
         firstName,
         lastName,
+        displayName,
         organization,
         jobTitle
       });
@@ -210,6 +213,21 @@ const ProfilePage = () => {
                   onChange={onChange}
                   required
                 />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="displayName">Display Name</label>
+                <input
+                  type="text"
+                  id="displayName"
+                  name="displayName"
+                  value={displayName}
+                  onChange={onChange}
+                  placeholder="How you want to appear to others"
+                />
+                <small className="form-text">
+                  This is how you'll appear in events and leaderboards
+                </small>
               </div>
 
               <div className="form-group">

@@ -12,7 +12,7 @@ export async function register(req, res) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, password, firstName, lastName, organization, jobTitle } = req.body;
+  const { email, password, firstName, lastName, organization, jobTitle, displayName } = req.body;
 
   try {
     // Check if user already exists
@@ -20,6 +20,10 @@ export async function register(req, res) {
     if (user) {
       return res.status(400).json({ msg: 'User already exists' });
     }
+    
+    // Generate default display name if not provided
+    const userDisplayName = displayName || 
+      (firstName && lastName ? `${firstName} ${lastName}` : email.split('@')[0]);
 
     // Create new user
     user = new User({
@@ -27,6 +31,7 @@ export async function register(req, res) {
       password,
       firstName,
       lastName,
+      displayName: userDisplayName,
       organization,
       jobTitle
     });
@@ -86,6 +91,18 @@ export async function login(req, res) {
     if (!isMatch) {
       return res.status(400).json({ msg: 'Invalid credentials' });
     }
+    
+    // Add displayName if it doesn't exist
+    if (!user.displayName) {
+      // Generate a display name
+      const displayName = user.firstName && user.lastName 
+        ? `${user.firstName} ${user.lastName}` 
+        : user.email.split('@')[0];
+      
+      user.displayName = displayName;
+      await user.save();
+      console.log('Added displayName to user:', displayName);
+    }
 
     // Create JWT token
     const payload = {
@@ -110,6 +127,7 @@ export async function login(req, res) {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
+            displayName: user.displayName,
             role: user.role
           }
         };
@@ -127,10 +145,44 @@ export async function login(req, res) {
 // Get authenticated user
 export async function getMe(req, res) {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    console.log('GetMe called for user ID:', req.user.id);
+    let user = await User.findById(req.user.id).select('-password');
+    
+    if (!user) {
+      console.log('User not found in getMe');
+      return res.status(404).json({ msg: 'User not found' });
+    }
+    
+    // Handle case for existing users without displayName
+    if (!user.displayName) {
+      console.log('User has no displayName, generating one');
+      // Generate display name from existing fields
+      const displayName = user.firstName && user.lastName 
+        ? `${user.firstName} ${user.lastName}` 
+        : user.email.split('@')[0];
+      
+      try {
+        user.displayName = displayName;
+        await user.save();
+        console.log('Added displayName to user in getMe:', displayName);
+      } catch (saveErr) {
+        console.error('Error saving displayName in getMe:', saveErr);
+        // Continue anyway - we can still return the user object
+      }
+    }
+    
+    console.log('Returning user data:', {
+      id: user._id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      displayName: user.displayName,
+      role: user.role
+    });
+    
     res.json(user);
   } catch (err) {
-    console.error(err.message);
+    console.error('Error in getMe:', err.message);
     res.status(500).send('Server error');
   }
 }

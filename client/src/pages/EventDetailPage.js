@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import MainLayout from '../components/layout/MainLayout.js';
+import * as eventService from '../services/event.service.js';
+import * as questionSetService from '../services/questionSet.service.js';
 import './DashboardPage.css';
 import './EventsPage.css';
 
@@ -28,45 +30,53 @@ const EventDetailPage = () => {
   const fetchEventDetails = async () => {
     try {
       setLoading(true);
+      console.log(`Fetching event details for ID: ${id}`);
       
-      // Get event details
-      const eventResponse = await fetch(`/api/events/${id}`, {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
-      
-      if (!eventResponse.ok) {
-        if (eventResponse.status === 404) {
-          throw new Error('Event not found');
-        } else if (eventResponse.status === 403) {
-          throw new Error('You do not have access to this event');
-        } else {
-          throw new Error('Failed to fetch event details');
-        }
-      }
-      
-      const eventData = await eventResponse.json();
+      // Get event details using the event service
+      const eventData = await eventService.getEventById(id);
+      console.log('Event data retrieved:', eventData);
       setEvent(eventData);
       
+      // Set questions to empty array by default
+      setQuestions([]);
+      
       // Get questions for this event's question set
-      if (eventData.questionSet) {
-        const questionsResponse = await fetch(`/api/questionSets/${eventData.questionSet._id}/questions`, {
-          headers: {
-            'x-auth-token': localStorage.getItem('token')
+      if (eventData.questionSet && eventData.questionSet._id) {
+        console.log(`Fetching questions for question set: ${eventData.questionSet._id}`);
+        try {
+          const questionsData = await questionSetService.getQuestionSetQuestions(eventData.questionSet._id);
+          
+          // Ensure questionsData is an array
+          if (Array.isArray(questionsData)) {
+            console.log(`Retrieved ${questionsData.length} questions`);
+            setQuestions(questionsData);
+          } else {
+            console.warn('Questions data is not an array:', questionsData);
+            setQuestions([]);
           }
-        });
-        
-        if (!questionsResponse.ok) {
-          throw new Error('Failed to fetch questions');
+        } catch (questionsErr) {
+          console.error('Error fetching questions:', questionsErr);
+          // Continue with the event even if questions failed to load
+          setQuestions([]);
         }
-        
-        const questionsData = await questionsResponse.json();
-        setQuestions(questionsData);
       }
     } catch (err) {
-      setError(err.message || 'An error occurred while fetching event data');
-      console.error(err);
+      console.error('Error fetching event details:', err);
+      let errorMessage = 'An error occurred while fetching event data';
+      
+      if (err.response) {
+        if (err.response.status === 404) {
+          errorMessage = 'Event not found';
+        } else if (err.response.status === 403) {
+          errorMessage = 'You do not have access to this event';
+        } else if (err.response.data && err.response.data.msg) {
+          errorMessage = err.response.data.msg;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -88,6 +98,8 @@ const EventDetailPage = () => {
         return;
       }
       
+      console.log(`Submitting answer for question ${questionId} in event ${id}`);
+      
       const response = await fetch(`/api/events/${id}/questions/${questionId}/answer`, {
         method: 'POST',
         headers: {
@@ -96,6 +108,14 @@ const EventDetailPage = () => {
         },
         body: JSON.stringify({ answer })
       });
+      
+      // Check if response is JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        alert("Received unexpected response from server. Please try again.");
+        console.error("Non-JSON response:", await response.text());
+        return;
+      }
       
       const data = await response.json();
       
@@ -120,7 +140,7 @@ const EventDetailPage = () => {
       fetchEventDetails();
     } catch (err) {
       alert('An error occurred. Please try again.');
-      console.error(err);
+      console.error('Error submitting answer:', err);
     }
   };
 
@@ -195,60 +215,67 @@ const EventDetailPage = () => {
         <div className="dashboard-content">
           <div className="card dashboard-card">
             <h2>Questions</h2>
-            {questions.length === 0 ? (
+            {!Array.isArray(questions) || questions.length === 0 ? (
               <p>No questions available for this event.</p>
             ) : (
               <div className="questions-list">
-                {questions.map((question, index) => (
-                  <div key={question._id} className="question-item">
-                    <h3>Question {index + 1}</h3>
-                    <p>{question.text}</p>
-                    
-                    {question.imageUrl && (
-                      <div className="question-image">
-                        <img src={question.imageUrl} alt={`Question ${index + 1}`} />
-                      </div>
-                    )}
-                    
-                    {question.options && question.options.length > 0 ? (
-                      // Multiple choice question
-                      <div className="options-list">
-                        {question.options.map((option, optIndex) => (
-                          <div key={optIndex} className="option-item">
-                            <input
-                              type="radio"
-                              id={`option-${question._id}-${optIndex}`}
-                              name={`question-${question._id}`}
-                              value={option}
-                              checked={currentAnswers[question._id] === option}
-                              onChange={() => handleAnswerChange(question._id, option)}
-                            />
-                            <label htmlFor={`option-${question._id}-${optIndex}`}>
-                              {option}
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      // Free text answer
-                      <div className="answer-input">
-                        <input
-                          type="text"
-                          placeholder="Enter your answer"
-                          value={currentAnswers[question._id] || ''}
-                          onChange={(e) => handleAnswerChange(question._id, e.target.value)}
-                        />
-                      </div>
-                    )}
-                    
-                    <button 
-                      className="btn btn-small"
-                      onClick={() => handleSubmitAnswer(question._id)}
-                    >
-                      Submit Answer
-                    </button>
-                  </div>
-                ))}
+                {questions.map((question, index) => {
+                  if (!question || !question._id) {
+                    console.warn('Invalid question data:', question);
+                    return null;
+                  }
+                  
+                  return (
+                    <div key={question._id} className="question-item">
+                      <h3>Question {index + 1}</h3>
+                      <p>{question.text || 'No question text available'}</p>
+                      
+                      {question.imageUrl && (
+                        <div className="question-image">
+                          <img src={question.imageUrl} alt={`Question ${index + 1}`} />
+                        </div>
+                      )}
+                      
+                      {Array.isArray(question.options) && question.options.length > 0 ? (
+                        // Multiple choice question
+                        <div className="options-list">
+                          {question.options.map((option, optIndex) => (
+                            <div key={optIndex} className="option-item">
+                              <input
+                                type="radio"
+                                id={`option-${question._id}-${optIndex}`}
+                                name={`question-${question._id}`}
+                                value={option}
+                                checked={currentAnswers[question._id] === option}
+                                onChange={() => handleAnswerChange(question._id, option)}
+                              />
+                              <label htmlFor={`option-${question._id}-${optIndex}`}>
+                                {option}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        // Free text answer
+                        <div className="answer-input">
+                          <input
+                            type="text"
+                            placeholder="Enter your answer"
+                            value={currentAnswers[question._id] || ''}
+                            onChange={(e) => handleAnswerChange(question._id, e.target.value)}
+                          />
+                        </div>
+                      )}
+                      
+                      <button 
+                        className="btn btn-small"
+                        onClick={() => handleSubmitAnswer(question._id)}
+                      >
+                        Submit Answer
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -13,10 +13,30 @@ export const getAllEvents = async () => {
   }
 };
 
-// Get event by ID (admin only)
+// Get all active events (for regular users)
+export const getActiveEvents = async () => {
+  try {
+    const response = await api.get(`${EVENTS_PATH}/active`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get event by ID
 export const getEventById = async (eventId) => {
   try {
     const response = await api.get(`${EVENTS_PATH}/${eventId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get events the authenticated user is part of
+export const getUserEvents = async () => {
+  try {
+    const response = await api.get(`${EVENTS_PATH}/user`);
     return response.data;
   } catch (error) {
     throw error;
@@ -32,7 +52,8 @@ export const createEvent = async (eventData) => {
   Object.keys(eventData).forEach(key => {
     if (key === 'eventImage') {
       if (eventData[key]) {
-        formData.append(key, eventData[key]);
+        // Use 'image' as the key since that's what the server expects
+        formData.append('image', eventData[key]);
       }
     } else if (key === 'eventDate') {
       formData.append(key, new Date(eventData[key]).toISOString());
@@ -62,7 +83,8 @@ export const updateEvent = async (eventId, eventData) => {
   Object.keys(eventData).forEach(key => {
     if (key === 'eventImage') {
       if (eventData[key] && typeof eventData[key] !== 'string') {
-        formData.append(key, eventData[key]);
+        // Use 'image' as the key since that's what the server expects
+        formData.append('image', eventData[key]);
       }
     } else if (key === 'eventDate' && eventData[key]) {
       formData.append(key, new Date(eventData[key]).toISOString());
