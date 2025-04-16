@@ -372,6 +372,11 @@ const EventDetailPage = () => {
                     const categoryId = category.name || `category-${categoryIndex}`;
                     const isExpanded = expandedCategories[categoryId];
                     
+                    // Skip categories that are hidden (for non-admin users)
+                    if (category.isVisible === false && (!user || user.role !== 'admin')) {
+                      return null;
+                    }
+                    
                     return (
                       <div key={categoryIndex} className="category-container">
                         <div 
@@ -384,6 +389,18 @@ const EventDetailPage = () => {
                             <span style={{ marginLeft: '8px', fontSize: '1rem' }}>
                               {isExpanded ? '▼' : '►'}
                             </span>
+                            {(user && user.role === 'admin' && category.isVisible === false) && (
+                              <span style={{ 
+                                marginLeft: '8px', 
+                                fontSize: '0.85rem',
+                                backgroundColor: '#f0f0f0',
+                                color: '#666',
+                                borderRadius: '4px',
+                                padding: '0.25rem 0.5rem'
+                              }}>
+                                HIDDEN (admin view)
+                              </span>
+                            )}
                           </h3>
                           <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
                             {category.description && (

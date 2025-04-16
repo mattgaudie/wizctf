@@ -153,6 +153,13 @@ const EventsPage = () => {
     setJoinError(null);
   };
 
+  const isAdmin = user && user.role === 'admin';
+
+  const handleAdminClick = (e, eventId) => {
+    e.stopPropagation(); // Prevent event from bubbling up to the parent div
+    navigate(`/events/${eventId}/manage`);
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -203,6 +210,15 @@ const EventsPage = () => {
                       {event.description && (
                         <p className="event-description">{event.description}</p>
                       )}
+                      {isAdmin && (
+                        <button 
+                          className="btn btn-small"
+                          onClick={(e) => handleAdminClick(e, event._id)}
+                          style={{ marginTop: '10px' }}
+                        >
+                          Manage Event
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -234,6 +250,15 @@ const EventsPage = () => {
                       <p><strong>Duration:</strong> {event.duration} minutes</p>
                       {event.description && (
                         <p className="event-description">{event.description}</p>
+                      )}
+                      {isAdmin && (
+                        <button 
+                          className="btn btn-small"
+                          onClick={(e) => handleAdminClick(e, event._id)}
+                          style={{ marginTop: '10px' }}
+                        >
+                          Manage Event
+                        </button>
                       )}
                     </div>
                   </div>

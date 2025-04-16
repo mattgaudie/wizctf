@@ -12,7 +12,9 @@ import {
   checkAnswer,
   getEventAnswerHistory,
   getUserAnswerHistory,
-  trackHintUsage
+  trackHintUsage,
+  updateQuestionAnswer,
+  updateCategoryVisibility
 } from '../../controllers/event.controller.js';
 import auth from '../../middleware/auth.middleware.js';
 import { isAdmin } from '../../middleware/admin.middleware.js';
@@ -142,6 +144,36 @@ router.get(
   '/:eventId/questions/:questionId/hint',
   auth,
   trackHintUsage
+);
+
+// @route   PUT api/events/:eventId/questions/:questionId/answer
+// @desc    Update a question's answer (admin only)
+// @access  Private/Admin
+router.put(
+  '/:eventId/questions/:questionId/answer',
+  [
+    auth,
+    isAdmin,
+    [
+      check('answer', 'Answer is required').not().isEmpty()
+    ]
+  ],
+  updateQuestionAnswer
+);
+
+// @route   PUT api/events/:eventId/categories/:categoryName
+// @desc    Update category visibility (admin only)
+// @access  Private/Admin
+router.put(
+  '/:eventId/categories/:categoryName',
+  [
+    auth,
+    isAdmin,
+    [
+      check('isVisible', 'isVisible is required').isBoolean()
+    ]
+  ],
+  updateCategoryVisibility
 );
 
 export default router;

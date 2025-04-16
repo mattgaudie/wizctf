@@ -12,6 +12,7 @@ import ProfilePage from './pages/ProfilePage';
 import AdminPage from './pages/AdminPage';
 import EventsPage from './pages/EventsPage';
 import EventDetailPage from './pages/EventDetailPage';
+import EventManagementPage from './pages/EventManagementPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Import styles
@@ -29,6 +30,7 @@ const App = () => {
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/:id" element={<EventDetailPage />} />
+          <Route path="/events/:id/manage" element={<EventManagementPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Router>

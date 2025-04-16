@@ -177,3 +177,29 @@ export const submitAnswer = async (eventId, questionId, answerData) => {
     throw error;
   }
 };
+
+// Update question answer (admin only)
+export const updateQuestionAnswer = async (eventId, questionId, newAnswer) => {
+  try {
+    const response = await api.put(
+      `${EVENTS_PATH}/${eventId}/questions/${questionId}/answer`,
+      { answer: newAnswer }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Update category visibility (admin only)
+export const updateCategoryVisibility = async (eventId, categoryName, isVisible) => {
+  try {
+    const response = await api.put(
+      `${EVENTS_PATH}/${eventId}/categories/${encodeURIComponent(categoryName)}`,
+      { isVisible }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

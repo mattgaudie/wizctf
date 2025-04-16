@@ -852,3 +852,122 @@ export async function checkAnswer(req, res) {
     res.status(500).send('Server error');
   }
 }
+
+// Update question answer (admin only)
+export async function updateQuestionAnswer(req, res) {
+  const { answer } = req.body;
+  const { eventId, questionId } = req.params;
+  
+  if (!answer) {
+    return res.status(400).json({ msg: 'Answer is required' });
+  }
+  
+  try {
+    // Find the event
+    const event = await Event.findById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ msg: 'Event not found' });
+    }
+    
+    // Find the question in the embedded data
+    let foundQuestion = null;
+    let foundCategory = null;
+    let categoryIndex = -1;
+    let questionIndex = -1;
+    
+    // Search through all categories and their questions
+    for (let i = 0; i < event.questionSet.categories.length; i++) {
+      const category = event.questionSet.categories[i];
+      
+      for (let j = 0; j < category.questions.length; j++) {
+        const question = category.questions[j];
+        // Use either originalId or _id to match
+        const questionIdToCheck = question.originalId ? 
+          question.originalId.toString() : 
+          question._id.toString();
+        
+        if (questionIdToCheck === questionId) {
+          foundQuestion = question;
+          foundCategory = category;
+          categoryIndex = i;
+          questionIndex = j;
+          break;
+        }
+      }
+      
+      if (foundQuestion) break;
+    }
+    
+    if (!foundQuestion) {
+      return res.status(404).json({ msg: 'Question not found' });
+    }
+    
+    // Update the answer
+    event.questionSet.categories[categoryIndex].questions[questionIndex].answer = answer;
+    
+    // Save the event
+    await event.save();
+    
+    res.json({ 
+      success: true, 
+      msg: 'Answer updated successfully',
+      question: {
+        title: foundQuestion.title,
+        answer: answer
+      }
+    });
+    
+  } catch (err) {
+    console.error('Error updating question answer:', err);
+    res.status(500).send('Server error');
+  }
+}
+
+// Update category visibility (admin only)
+export async function updateCategoryVisibility(req, res) {
+  const { isVisible } = req.body;
+  const { eventId, categoryName } = req.params;
+  
+  try {
+    // Find the event
+    const event = await Event.findById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ msg: 'Event not found' });
+    }
+    
+    // Find the category by name
+    const categoryIndex = event.questionSet.categories.findIndex(
+      c => c.name === categoryName
+    );
+    
+    if (categoryIndex === -1) {
+      return res.status(404).json({ msg: 'Category not found' });
+    }
+    
+    // Initialize isVisible field if it doesn't exist
+    if (event.questionSet.categories[categoryIndex].isVisible === undefined) {
+      event.questionSet.categories[categoryIndex].isVisible = true;
+    }
+    
+    // Update the visibility
+    event.questionSet.categories[categoryIndex].isVisible = isVisible;
+    
+    // Save the event
+    await event.save();
+    
+    res.json({ 
+      success: true, 
+      msg: `Category "${categoryName}" is now ${isVisible ? 'visible' : 'hidden'}`,
+      category: {
+        name: categoryName,
+        isVisible: isVisible
+      }
+    });
+    
+  } catch (err) {
+    console.error('Error updating category visibility:', err);
+    res.status(500).send('Server error');
+  }
+}
