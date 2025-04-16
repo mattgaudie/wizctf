@@ -618,10 +618,20 @@ export async function trackHintUsage(req, res) {
       pointValue = pointReduction;
     }
     
+    // Get user details
+    const user = await User.findById(req.user.id);
+    
     // Create an answer event for the hint usage
     const hintEvent = new Answer({
       userId: req.user.id,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email,
+      displayName: user.displayName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email.split('@')[0]),
+      organization: user.organization || '',
       eventId,
+      eventName: event.name,
+      eventDate: event.eventDate,
       questionId,
       questionTitle: foundQuestion.title,
       categoryName: foundCategory.name,
@@ -736,10 +746,20 @@ export async function checkAnswer(req, res) {
       pointsChange = 0; // Could be a negative value to implement penalties
     }
     
+    // Get user details
+    const user = await User.findById(req.user.id);
+    
     // Create an answer event in the time series collection
     const answerEvent = new Answer({
       userId: req.user.id,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email,
+      displayName: user.displayName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email.split('@')[0]),
+      organization: user.organization || '',
       eventId,
+      eventName: event.name,
+      eventDate: event.eventDate,
       questionId,
       questionTitle: foundQuestion.title,
       categoryName: foundCategory.name,

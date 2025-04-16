@@ -6,9 +6,38 @@ const AnswerSchema = new Schema({
     ref: 'User',
     required: true
   },
+  firstName: {
+    type: String,
+    trim: true
+  },
+  lastName: {
+    type: String,
+    trim: true
+  },
+  email: {
+    type: String,
+    trim: true
+  },
+  displayName: {
+    type: String,
+    trim: true
+  },
+  organization: {
+    type: String,
+    trim: true
+  },
   eventId: {
     type: Schema.Types.ObjectId,
     ref: 'Event',
+    required: true
+  },
+  eventName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  eventDate: {
+    type: Date,
     required: true
   },
   questionId: {
