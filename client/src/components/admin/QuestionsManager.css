@@ -28,6 +28,34 @@
   padding-bottom: 0.75rem;
 }
 
+.form-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.form-section h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  color: var(--primary-color, #4A90E2);
+  border-bottom: 1px dashed #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.half-width {
+  flex: 1;
+  min-width: 0;
+}
+
 .form-group {
   margin-bottom: 1.25rem;
 }
@@ -46,6 +74,13 @@
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
   font-size: 1rem;
+}
+
+.form-text {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: #6b7280;
 }
 
 .questions-form textarea {

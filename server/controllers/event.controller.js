@@ -141,6 +141,24 @@ export async function createEvent(req, res) {
             difficulty: question.difficulty,
             wizProduct: question.wizProduct,
             answer: question.answer,
+            // Include hint data
+            hint: question.hint ? {
+              text: question.hint.text || '',
+              pointReduction: question.hint.pointReduction || 10,
+              reductionType: question.hint.reductionType || 'percentage'
+            } : {
+              text: '',
+              pointReduction: 10,
+              reductionType: 'percentage'
+            },
+            // Include solution data
+            solution: question.solution ? {
+              description: question.solution.description || '',
+              url: question.solution.url || ''
+            } : {
+              description: '',
+              url: ''
+            },
             creatorEmail: question.creatorEmail,
             originalId: question._id
           };
@@ -259,6 +277,24 @@ export async function updateEvent(req, res) {
               difficulty: question.difficulty,
               wizProduct: question.wizProduct,
               answer: question.answer,
+              // Include hint data
+              hint: question.hint ? {
+                text: question.hint.text || '',
+                pointReduction: question.hint.pointReduction || 10,
+                reductionType: question.hint.reductionType || 'percentage'
+              } : {
+                text: '',
+                pointReduction: 10,
+                reductionType: 'percentage'
+              },
+              // Include solution data
+              solution: question.solution ? {
+                description: question.solution.description || '',
+                url: question.solution.url || ''
+              } : {
+                description: '',
+                url: ''
+              },
               creatorEmail: question.creatorEmail,
               originalId: question._id
             };
@@ -423,7 +459,7 @@ export async function getEventParticipants(req, res) {
 
 // Check an answer for a question
 export async function checkAnswer(req, res) {
-  const { answer } = req.body;
+  const { answer, hintUsed, hintReduction, hintReductionType } = req.body;
   const { eventId, questionId } = req.params;
   
   if (!answer) {
@@ -439,11 +475,11 @@ export async function checkAnswer(req, res) {
     }
     
     // Check if the user is a participant in this event
-    const isParticipant = event.participants.some(
+    const userIndex = event.participants.findIndex(
       p => p.user.toString() === req.user.id
     );
     
-    if (!isParticipant) {
+    if (userIndex === -1) {
       return res.status(403).json({ msg: 'You must join this event before submitting answers' });
     }
     
@@ -477,11 +513,60 @@ export async function checkAnswer(req, res) {
     const isCorrect = 
       answer.toLowerCase().trim() === foundQuestion.answer.toLowerCase().trim();
     
+    // Check if this question has already been answered by the user
+    const hasAnswered = event.participants[userIndex].answeredQuestions &&
+      event.participants[userIndex].answeredQuestions.includes(questionId);
+    
+    if (hasAnswered) {
+      return res.json({
+        correct: true,
+        alreadyAnswered: true,
+        points: 0,
+        message: 'You have already answered this question correctly'
+      });
+    }
+    
+    // Calculate points based on hint usage
+    let awardedPoints = foundQuestion.points;
+    
+    if (isCorrect && hintUsed) {
+      if (hintReductionType === 'percentage') {
+        // Apply percentage reduction
+        const reductionAmount = (foundQuestion.points * hintReduction) / 100;
+        awardedPoints = Math.floor(foundQuestion.points - reductionAmount);
+      } else {
+        // Apply static point reduction
+        awardedPoints = Math.max(0, foundQuestion.points - hintReduction);
+      }
+    }
+    
+    // If correct, update the participant's record
+    if (isCorrect) {
+      // Initialize answeredQuestions array if it doesn't exist
+      if (!event.participants[userIndex].answeredQuestions) {
+        event.participants[userIndex].answeredQuestions = [];
+      }
+      
+      // Add question ID to answered questions
+      event.participants[userIndex].answeredQuestions.push(questionId);
+      
+      // Update score
+      if (!event.participants[userIndex].score) {
+        event.participants[userIndex].score = 0;
+      }
+      
+      event.participants[userIndex].score += awardedPoints;
+      
+      // Save the event
+      await event.save();
+    }
+    
     // Return result
     res.json({
       correct: isCorrect,
-      points: isCorrect ? foundQuestion.points : 0,
-      category: foundCategory ? foundCategory.name : null
+      points: isCorrect ? awardedPoints : 0,
+      category: foundCategory ? foundCategory.name : null,
+      hintUsed: hintUsed || false
     });
     
   } catch (err) {

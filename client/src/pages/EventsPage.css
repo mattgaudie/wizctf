@@ -327,6 +327,56 @@
   font-size: 1rem;
 }
 
+/* Hint related styles */
+.hint-section {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background-color: #fff8e6;
+  border-radius: 6px;
+  border: 1px dashed #f0c142;
+}
+
+.btn-hint {
+  background-color: #fff8e6;
+  color: #d4970b;
+  border: 1px solid #f0c142;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-hint:hover {
+  background-color: #ffefc3;
+}
+
+.hint-box {
+  padding: 0.5rem;
+}
+
+.hint-box h5 {
+  margin-top: 0;
+  color: #d4970b;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.hint-box p {
+  margin: 0.5rem 0;
+}
+
+.hint-penalty {
+  font-size: 0.85rem;
+  color: #c76f18;
+  margin-top: 0.75rem;
+  background-color: #fff2e6;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
 /* Add styles for completed questions */
 .question-item.completed {
   border-left: 4px solid #28a745;

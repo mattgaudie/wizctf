@@ -1,5 +1,6 @@
 import Question from '../models/Question.js';
 import User from '../models/User.js';
+import Event from '../models/Event.js';
 import { validationResult } from 'express-validator';
 
 // Get all questions (admin only)
@@ -40,7 +41,16 @@ export async function createQuestion(req, res) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { title, description, points, difficulty, wizProduct, answer } = req.body;
+  const { 
+    title, 
+    description, 
+    points, 
+    difficulty, 
+    wizProduct, 
+    answer,
+    hint,
+    solution
+  } = req.body;
 
   try {
     // Get the user's email from their ID
@@ -57,6 +67,15 @@ export async function createQuestion(req, res) {
       difficulty,
       wizProduct,
       answer,
+      hint: {
+        text: hint?.text || '',
+        pointReduction: hint?.pointReduction || 10,
+        reductionType: hint?.reductionType || 'percentage'
+      },
+      solution: {
+        description: solution?.description || '',
+        url: solution?.url || ''
+      },
       createdBy: req.user.id,
       creatorEmail: user.email
     });
@@ -79,7 +98,17 @@ export async function updateQuestion(req, res) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { title, description, points, difficulty, wizProduct, answer, active } = req.body;
+  const { 
+    title, 
+    description, 
+    points, 
+    difficulty, 
+    wizProduct, 
+    answer, 
+    active,
+    hint,
+    solution
+  } = req.body;
 
   // Build question object
   const questionFields = {};
@@ -91,6 +120,23 @@ export async function updateQuestion(req, res) {
   if (answer) questionFields.answer = answer;
   if (active !== undefined) questionFields.active = active;
   questionFields.updatedAt = Date.now();
+  
+  // Handle hint field updates
+  if (hint) {
+    questionFields.hint = {
+      text: hint.text || '',
+      pointReduction: hint.pointReduction !== undefined ? hint.pointReduction : 10,
+      reductionType: hint.reductionType || 'percentage'
+    };
+  }
+  
+  // Handle solution field updates
+  if (solution) {
+    questionFields.solution = {
+      description: solution.description || '',
+      url: solution.url || ''
+    };
+  }
 
   try {
     // Update question
@@ -106,6 +152,9 @@ export async function updateQuestion(req, res) {
       { new: true }
     );
     
+    // Propagate changes to events that use this question
+    await updateQuestionInEvents(req.params.id, questionFields);
+    
     res.json(question);
   } catch (err) {
     console.error(err.message);
@@ -117,6 +166,58 @@ export async function updateQuestion(req, res) {
 }
 
 // Delete question (admin only)
+// Helper function to update embedded question data in events
+async function updateQuestionInEvents(questionId, updatedFields) {
+  try {
+    console.log(`Propagating question updates for question ID: ${questionId} to events`);
+    
+    // Find all events that contain this question
+    const events = await Event.find({
+      'questionSet.categories.questions.originalId': questionId
+    });
+    
+    console.log(`Found ${events.length} events using this question`);
+    
+    // For each event, update the embedded question data
+    for (const event of events) {
+      let updated = false;
+      
+      // Loop through categories and questions to find matching question
+      for (const category of event.questionSet.categories) {
+        for (let i = 0; i < category.questions.length; i++) {
+          const question = category.questions[i];
+          
+          // Check if this is the question we're looking for
+          if (question.originalId && question.originalId.toString() === questionId) {
+            console.log(`Updating question in event: ${event.name} (${event._id})`);
+            
+            // Update fields
+            if (updatedFields.title) question.title = updatedFields.title;
+            if (updatedFields.description) question.description = updatedFields.description;
+            if (updatedFields.points) question.points = updatedFields.points;
+            if (updatedFields.difficulty) question.difficulty = updatedFields.difficulty;
+            if (updatedFields.wizProduct) question.wizProduct = updatedFields.wizProduct;
+            if (updatedFields.answer) question.answer = updatedFields.answer;
+            if (updatedFields.hint) question.hint = updatedFields.hint;
+            if (updatedFields.solution) question.solution = updatedFields.solution;
+            
+            updated = true;
+          }
+        }
+      }
+      
+      // Save event if changes were made
+      if (updated) {
+        await event.save();
+        console.log(`Successfully updated event: ${event.name}`);
+      }
+    }
+  } catch (err) {
+    console.error('Error updating question in events:', err);
+    throw err;
+  }
+}
+
 export async function deleteQuestion(req, res) {
   try {
     const question = await Question.findById(req.params.id);
@@ -125,6 +226,41 @@ export async function deleteQuestion(req, res) {
       return res.status(404).json({ msg: 'Question not found' });
     }
     
+    // First remove or mark as deleted in events
+    try {
+      const events = await Event.find({
+        'questionSet.categories.questions.originalId': req.params.id
+      });
+      
+      // For each event, update to mark the question as deleted or remove it
+      for (const event of events) {
+        let updated = false;
+        
+        // Loop through categories to find and remove/mark the question
+        for (const category of event.questionSet.categories) {
+          // Filter out the deleted question
+          const originalLength = category.questions.length;
+          category.questions = category.questions.filter(q => 
+            !q.originalId || q.originalId.toString() !== req.params.id
+          );
+          
+          if (category.questions.length !== originalLength) {
+            updated = true;
+          }
+        }
+        
+        // Save event if changes were made
+        if (updated) {
+          await event.save();
+          console.log(`Removed question from event: ${event.name}`);
+        }
+      }
+    } catch (err) {
+      console.error('Error removing question from events:', err);
+      // Continue with deletion even if event update fails
+    }
+    
+    // Now delete the actual question
     await Question.findByIdAndRemove(req.params.id);
     
     res.json({ msg: 'Question deleted successfully' });

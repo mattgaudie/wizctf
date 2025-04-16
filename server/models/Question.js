@@ -25,6 +25,39 @@ const QuestionSchema = new Schema({
     required: true,
     enum: ['Wiz Cloud', 'Wiz Code', 'Wiz Defend', 'Wiz Sensor']
   },
+  // New hint field
+  hint: {
+    text: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    pointReduction: {
+      type: Number,
+      default: 10,
+      min: 0,
+      max: 100
+    },
+    // Whether the reduction is a percentage or static value
+    reductionType: {
+      type: String,
+      enum: ['percentage', 'static'],
+      default: 'percentage'
+    }
+  },
+  // New solution field (admin only)
+  solution: {
+    description: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    url: {
+      type: String,
+      trim: true,
+      default: ''
+    }
+  },
   answer: {
     type: String,
     required: true,

@@ -1,5 +1,6 @@
 import QuestionSet from '../models/QuestionSet.js';
 import User from '../models/User.js';
+import Event from '../models/Event.js';
 import { validationResult } from 'express-validator';
 
 // Get all question sets (admin only)
@@ -98,7 +99,10 @@ export async function updateQuestionSet(req, res) {
       req.params.id,
       { $set: questionSetFields },
       { new: true }
-    );
+    ).populate('categories.questions');
+    
+    // Update events that use this question set
+    await updateEventsWithQuestionSet(questionSet);
     
     res.json(questionSet);
   } catch (err) {
@@ -111,12 +115,71 @@ export async function updateQuestionSet(req, res) {
 }
 
 // Delete question set (admin only)
+// Helper function to update events when a question set is modified
+async function updateEventsWithQuestionSet(questionSet) {
+  try {
+    console.log(`Updating events that use question set: ${questionSet.title} (${questionSet._id})`);
+    
+    // Find all events using this question set
+    const events = await Event.find({ questionSetRef: questionSet._id });
+    console.log(`Found ${events.length} events using this question set`);
+    
+    for (const event of events) {
+      console.log(`Updating event: ${event.name} (${event._id})`);
+      
+      // Create embedded version of the question set
+      const embeddedQuestionSet = {
+        title: questionSet.title,
+        description: questionSet.description,
+        categories: questionSet.categories.map(category => {
+          return {
+            name: category.name,
+            description: category.description,
+            questions: category.questions.map(question => {
+              // Create embedded question with original ID reference
+              return {
+                title: question.title,
+                description: question.description,
+                points: question.points,
+                difficulty: question.difficulty,
+                wizProduct: question.wizProduct,
+                answer: question.answer,
+                hint: question.hint,
+                solution: question.solution,
+                creatorEmail: question.creatorEmail,
+                originalId: question._id
+              };
+            })
+          };
+        })
+      };
+      
+      // Update the event with the new embedded question set
+      event.questionSet = embeddedQuestionSet;
+      await event.save();
+      console.log(`Successfully updated event: ${event.name}`);
+    }
+  } catch (err) {
+    console.error('Error updating events with question set:', err);
+    throw err;
+  }
+}
+
 export async function deleteQuestionSet(req, res) {
   try {
     const questionSet = await QuestionSet.findById(req.params.id);
     
     if (!questionSet) {
       return res.status(404).json({ msg: 'Question set not found' });
+    }
+    
+    // Check if any events are using this question set
+    const eventsUsingSet = await Event.find({ questionSetRef: req.params.id });
+    
+    if (eventsUsingSet.length > 0) {
+      return res.status(400).json({ 
+        msg: `Cannot delete question set. It is being used by ${eventsUsingSet.length} event(s).`
+      });
     }
     
     await QuestionSet.findByIdAndRemove(req.params.id);

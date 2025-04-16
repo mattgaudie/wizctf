@@ -59,6 +59,38 @@ const EventSchema = new Schema({
           type: String,
           trim: true
         },
+        // New hint field
+        hint: {
+          text: {
+            type: String,
+            trim: true,
+            default: ''
+          },
+          pointReduction: {
+            type: Number,
+            default: 10,
+            min: 0,
+            max: 100
+          },
+          reductionType: {
+            type: String,
+            enum: ['percentage', 'static'],
+            default: 'percentage'
+          }
+        },
+        // New solution field (admin only)
+        solution: {
+          description: {
+            type: String,
+            trim: true,
+            default: ''
+          },
+          url: {
+            type: String,
+            trim: true,
+            default: ''
+          }
+        },
         creatorEmail: String,
         originalId: Schema.Types.ObjectId
       }]

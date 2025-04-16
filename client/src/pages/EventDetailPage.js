@@ -20,6 +20,7 @@ const EventDetailPage = () => {
   const [currentAnswers, setCurrentAnswers] = useState({});
   const [expandedCategories, setExpandedCategories] = useState({});
   const [answeredQuestions, setAnsweredQuestions] = useState([]);
+  const [shownHints, setShownHints] = useState({});
   
   // For debugging
   useEffect(() => {
@@ -161,6 +162,13 @@ const EventDetailPage = () => {
   const isQuestionAnswered = (questionId) => {
     return answeredQuestions.includes(questionId);
   };
+  
+  const handleShowHint = (questionId) => {
+    setShownHints(prev => ({
+      ...prev,
+      [questionId]: true
+    }));
+  };
 
   const handleSubmitAnswer = async (questionId) => {
     try {
@@ -173,6 +181,10 @@ const EventDetailPage = () => {
       
       console.log(`Submitting answer for question ${questionId} in event ${id}`);
       
+      // Find the current question to check if hint was used
+      const currentQuestion = questions.find(q => q._id === questionId);
+      const hintUsed = shownHints[questionId] || false;
+      
       // Use our endpoint that works with embedded data
       const response = await fetch(`/api/events/${id}/questions/${questionId}/answer`, {
         method: 'POST',
@@ -180,7 +192,12 @@ const EventDetailPage = () => {
           'Content-Type': 'application/json',
           'x-auth-token': localStorage.getItem('token')
         },
-        body: JSON.stringify({ answer: answer.trim() })
+        body: JSON.stringify({ 
+          answer: answer.trim(),
+          hintUsed: hintUsed,
+          hintReduction: currentQuestion?.hint?.pointReduction || 10,
+          hintReductionType: currentQuestion?.hint?.reductionType || 'percentage'
+        })
       });
       
       // Check if response is JSON
@@ -378,6 +395,34 @@ const EventDetailPage = () => {
                                   {question.imageUrl && (
                                     <div className="question-image">
                                       <img src={question.imageUrl} alt={`${question.title}`} />
+                                    </div>
+                                  )}
+                                  
+                                  {/* Hint section */}
+                                  {question.hint && question.hint.text && !isAnswered && (
+                                    <div className="hint-section">
+                                      {!shownHints[question._id] ? (
+                                        <button 
+                                          className="btn-hint" 
+                                          onClick={() => handleShowHint(question._id)}
+                                        >
+                                          Show Hint 
+                                          {question.hint.reductionType === 'percentage' ? 
+                                            ` (-${question.hint.pointReduction}%)` : 
+                                            ` (-${question.hint.pointReduction} points)`}
+                                        </button>
+                                      ) : (
+                                        <div className="hint-box">
+                                          <h5>Hint:</h5>
+                                          <p>{question.hint.text}</p>
+                                          <p className="hint-penalty">
+                                            <strong>Note:</strong> Using this hint 
+                                            {question.hint.reductionType === 'percentage' ? 
+                                              ` reduces your score by ${question.hint.pointReduction}%` : 
+                                              ` reduces your score by ${question.hint.pointReduction} points`}
+                                          </p>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                   
