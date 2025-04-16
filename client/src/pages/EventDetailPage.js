@@ -24,6 +24,12 @@ const EventDetailPage = () => {
   
   // For debugging
   useEffect(() => {
+    console.log("Questions data:", questions);
+    console.log("Current shownHints state:", shownHints);
+  }, [questions, shownHints]);
+  
+  // For debugging
+  useEffect(() => {
     console.log("Current expandedCategories state:", expandedCategories);
     console.log("Categories data:", categories);
   }, [expandedCategories, categories]);
@@ -36,6 +42,34 @@ const EventDetailPage = () => {
       fetchEventDetails();
     }
   }, [isAuthenticated, authLoading, navigate, id]);
+  
+  // Fetch answer history to determine completed questions
+  useEffect(() => {
+    if (event && isAuthenticated && user) {
+      fetchUserAnswers();
+    }
+  }, [event, isAuthenticated, user]);
+  
+  const fetchUserAnswers = async () => {
+    try {
+      // Get user's answer history for this event
+      const answerHistory = await eventService.getEventAnswerHistory(id);
+      console.log('User answer history:', answerHistory);
+      
+      // Extract completed questions (correct answers only)
+      const completedQuestionIds = answerHistory
+        .filter(answer => answer.isCorrect)
+        .map(answer => answer.questionId);
+      
+      // Update the state with unique question IDs
+      const uniqueCompletedIds = [...new Set(completedQuestionIds)];
+      setAnsweredQuestions(uniqueCompletedIds);
+      
+      console.log('Updated answered questions from answer history:', uniqueCompletedIds);
+    } catch (err) {
+      console.error('Error fetching answer history:', err);
+    }
+  };
 
   const fetchEventDetails = async () => {
     try {
@@ -68,17 +102,29 @@ const EventDetailPage = () => {
           newExpandedState[categoryId] = true;
           
           if (category.questions && Array.isArray(category.questions)) {
+            // Log some question data to debug hints
+            console.log('Sample question with hint:', category.questions[0]);
+            
             // Map each question to add category and standardize format
-            const categoryQuestions = category.questions.map(q => ({
-              _id: q.originalId || q._id, // Use original ID if available
-              text: q.description || q.title, // Use description as text field for display
-              title: q.title,
-              category: category.name,
-              points: q.points,
-              difficulty: q.difficulty,
-              wizProduct: q.wizProduct,
-              // Don't include the answer in the client-facing data
-            }));
+            const categoryQuestions = category.questions.map(q => {
+              if (q.hint) {
+                console.log(`Question "${q.title}" has hint:`, q.hint);
+              } else {
+                console.log(`Question "${q.title}" has NO hint`);
+              }
+              
+              return {
+                _id: q.originalId || q._id, // Use original ID if available
+                text: q.description || q.title, // Use description as text field for display
+                title: q.title,
+                category: category.name,
+                points: q.points,
+                difficulty: q.difficulty,
+                wizProduct: q.wizProduct,
+                hint: q.hint, // Include hint information
+                // Don't include the answer in the client-facing data
+              };
+            });
             
             // Add to flat list of all questions
             allQuestions.push(...categoryQuestions);
@@ -163,11 +209,30 @@ const EventDetailPage = () => {
     return answeredQuestions.includes(questionId);
   };
   
-  const handleShowHint = (questionId) => {
-    setShownHints(prev => ({
-      ...prev,
-      [questionId]: true
-    }));
+  const handleShowHint = async (questionId) => {
+    console.log('handleShowHint called for question:', questionId);
+    try {
+      // Request hint from the server, which will record this as an answer event
+      console.log('Requesting hint from API...');
+      const hintData = await eventService.getQuestionHint(id, questionId);
+      console.log('Received hint data:', hintData);
+      
+      // Update UI to show hint
+      setShownHints(prev => {
+        const updatedHints = {
+          ...prev,
+          [questionId]: hintData.hint
+        };
+        console.log('Updated shownHints state:', updatedHints);
+        return updatedHints;
+      });
+      
+      // After getting a hint, refresh answer history to get updated points
+      fetchUserAnswers();
+    } catch (err) {
+      console.error('Error getting hint:', err);
+      alert('Could not retrieve hint. Please try again.');
+    }
   };
 
   const handleSubmitAnswer = async (questionId) => {
@@ -183,37 +248,23 @@ const EventDetailPage = () => {
       
       // Find the current question to check if hint was used
       const currentQuestion = questions.find(q => q._id === questionId);
-      const hintUsed = shownHints[questionId] || false;
+      console.log('Current question for submission:', currentQuestion);
       
-      // Use our endpoint that works with embedded data
-      const response = await fetch(`/api/events/${id}/questions/${questionId}/answer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': localStorage.getItem('token')
-        },
-        body: JSON.stringify({ 
-          answer: answer.trim(),
-          hintUsed: hintUsed,
-          hintReduction: currentQuestion?.hint?.pointReduction || 10,
-          hintReductionType: currentQuestion?.hint?.reductionType || 'percentage'
-        })
-      });
+      // Check if we've shown a hint for this question
+      const hintUsed = Boolean(shownHints[questionId]);
+      console.log('Hint used?', hintUsed, 'Hint content:', shownHints[questionId]);
       
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        alert("Received unexpected response from server. Please try again.");
-        console.error("Non-JSON response:", await response.text());
-        return;
-      }
+      // Use the event service to submit the answer
+      console.log('Submitting answer with event service...');
+      const answerData = { 
+        answer: answer.trim(),
+        hintUsed: hintUsed,
+        hintReduction: currentQuestion?.hint?.pointReduction || 10,
+        hintReductionType: currentQuestion?.hint?.reductionType || 'percentage'
+      };
+      console.log('Answer payload:', answerData);
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        alert(data.msg || 'Failed to submit answer');
-        return;
-      }
+      const data = await eventService.submitAnswer(id, questionId, answerData);
       
       // Clear the answer input and show feedback
       setCurrentAnswers({
@@ -233,8 +284,8 @@ const EventDetailPage = () => {
         alert('Incorrect answer. Try again!');
       }
       
-      // No need to refresh the whole event, as the questions are embedded
-      // fetchEventDetails();
+      // Refresh the answer history to keep everything in sync
+      fetchUserAnswers();
     } catch (err) {
       alert('An error occurred. Please try again.');
       console.error('Error submitting answer:', err);
@@ -399,30 +450,16 @@ const EventDetailPage = () => {
                                   )}
                                   
                                   {/* Hint section */}
-                                  {question.hint && question.hint.text && !isAnswered && (
-                                    <div className="hint-section">
-                                      {!shownHints[question._id] ? (
-                                        <button 
-                                          className="btn-hint" 
-                                          onClick={() => handleShowHint(question._id)}
-                                        >
-                                          Show Hint 
-                                          {question.hint.reductionType === 'percentage' ? 
-                                            ` (-${question.hint.pointReduction}%)` : 
-                                            ` (-${question.hint.pointReduction} points)`}
-                                        </button>
-                                      ) : (
-                                        <div className="hint-box">
-                                          <h5>Hint:</h5>
-                                          <p>{question.hint.text}</p>
-                                          <p className="hint-penalty">
-                                            <strong>Note:</strong> Using this hint 
-                                            {question.hint.reductionType === 'percentage' ? 
-                                              ` reduces your score by ${question.hint.pointReduction}%` : 
-                                              ` reduces your score by ${question.hint.pointReduction} points`}
-                                          </p>
-                                        </div>
-                                      )}
+                                  {question.hint && question.hint.text && !isAnswered && shownHints[question._id] && (
+                                    <div className="hint-box" style={{ marginBottom: '1rem' }}>
+                                      <h5>Hint:</h5>
+                                      <p>{shownHints[question._id]}</p>
+                                      <p className="hint-penalty">
+                                        <strong>Note:</strong> Using this hint 
+                                        {question.hint.reductionType === 'percentage' ? 
+                                          ` reduces your score by ${question.hint.pointReduction}%` : 
+                                          ` reduces your score by ${question.hint.pointReduction} points`}
+                                      </p>
                                     </div>
                                   )}
                                   
@@ -459,12 +496,34 @@ const EventDetailPage = () => {
                                         </div>
                                       )}
                                       
-                                      <button 
-                                        className="btn btn-small"
-                                        onClick={() => handleSubmitAnswer(question._id)}
-                                      >
-                                        Submit Answer
-                                      </button>
+                                      <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                        <button 
+                                          className="btn btn-small"
+                                          onClick={() => handleSubmitAnswer(question._id)}
+                                        >
+                                          Submit Answer
+                                        </button>
+                                        
+                                        {question.hint && question.hint.text && !shownHints[question._id] ? (
+                                          <button 
+                                            className="btn btn-small btn-secondary"
+                                            onClick={() => handleShowHint(question._id)}
+                                            title={question.hint.reductionType === 'percentage' ? 
+                                              `Using the hint reduces your score by ${question.hint.pointReduction}%` : 
+                                              `Using the hint reduces your score by ${question.hint.pointReduction} points`}
+                                          >
+                                            Use Hint {question.hint.reductionType === 'percentage' ? 
+                                              `(-${question.hint.pointReduction}%)` : 
+                                              `(-${question.hint.pointReduction}pts)`}
+                                          </button>
+                                        ) : (
+                                          question.hint ? (
+                                            <span style={{display: 'none'}}>
+                                              {console.log('Hint exists but not showing:', question.hint, 'shownHints:', shownHints[question._id])}
+                                            </span>
+                                          ) : null
+                                        )}
+                                      </div>
                                     </>
                                   )}
                                   

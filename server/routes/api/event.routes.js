@@ -9,7 +9,10 @@ import {
   joinEvent,
   getEventParticipants,
   getUserEvents,
-  checkAnswer
+  checkAnswer,
+  getEventAnswerHistory,
+  getUserAnswerHistory,
+  trackHintUsage
 } from '../../controllers/event.controller.js';
 import auth from '../../middleware/auth.middleware.js';
 import { isAdmin } from '../../middleware/admin.middleware.js';
@@ -112,6 +115,33 @@ router.post(
     ]
   ],
   checkAnswer
+);
+
+// @route   GET api/events/:eventId/answers
+// @desc    Get answer history for an event (admin sees all, users see only their own)
+// @access  Private
+router.get(
+  '/:eventId/answers',
+  auth,
+  getEventAnswerHistory
+);
+
+// @route   GET api/events/:eventId/answers/:userId
+// @desc    Get user specific answer history for an event
+// @access  Private (admin or the user themselves)
+router.get(
+  '/:eventId/answers/:userId',
+  auth,
+  getUserAnswerHistory
+);
+
+// @route   GET api/events/:eventId/questions/:questionId/hint
+// @desc    Get a hint for a question and track hint usage
+// @access  Private
+router.get(
+  '/:eventId/questions/:questionId/hint',
+  auth,
+  trackHintUsage
 );
 
 export default router;

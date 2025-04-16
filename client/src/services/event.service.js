@@ -134,3 +134,46 @@ export const getEventParticipants = async (eventId) => {
     throw error;
   }
 };
+
+// Get answer history for an event
+export const getEventAnswerHistory = async (eventId) => {
+  try {
+    const response = await api.get(`${EVENTS_PATH}/${eventId}/answers`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get a specific user's answer history for an event
+export const getUserAnswerHistory = async (eventId, userId) => {
+  try {
+    const response = await api.get(`${EVENTS_PATH}/${eventId}/answers/${userId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get a hint for a question
+export const getQuestionHint = async (eventId, questionId) => {
+  try {
+    const response = await api.get(`${EVENTS_PATH}/${eventId}/questions/${questionId}/hint`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Submit an answer for a question
+export const submitAnswer = async (eventId, questionId, answerData) => {
+  try {
+    const response = await api.post(
+      `${EVENTS_PATH}/${eventId}/questions/${questionId}/answer`, 
+      answerData
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

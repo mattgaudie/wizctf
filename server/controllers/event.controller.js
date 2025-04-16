@@ -1,6 +1,7 @@
 import Event from '../models/Event.js';
 import User from '../models/User.js';
 import QuestionSet from '../models/QuestionSet.js';
+import Answer from '../models/Answer.js';
 import { validationResult } from 'express-validator';
 import fs from 'fs';
 import path from 'path';
@@ -477,6 +478,175 @@ export async function getEventParticipants(req, res) {
 }
 
 // Check an answer for a question
+// Get answer history for an event
+export async function getEventAnswerHistory(req, res) {
+  const { eventId } = req.params;
+  
+  try {
+    // Check if event exists
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ msg: 'Event not found' });
+    }
+    
+    // Check if user is admin
+    const isAdmin = req.user.role === 'admin';
+    
+    // If user is not admin, check if they are a participant
+    if (!isAdmin) {
+      const isParticipant = event.participants.some(
+        p => p.user.toString() === req.user.id
+      );
+      
+      if (!isParticipant) {
+        return res.status(403).json({ msg: 'Access denied' });
+      }
+      
+      // Regular users can only see their own answers
+      const answers = await Answer.find({
+        eventId,
+        userId: req.user.id
+      }).sort({ ts: -1 });
+      
+      return res.json(answers);
+    }
+    
+    // Admins can see all answers
+    const answers = await Answer.find({ eventId }).sort({ ts: -1 });
+    return res.json(answers);
+    
+  } catch (err) {
+    console.error('Error fetching answer history:', err);
+    res.status(500).send('Server error');
+  }
+}
+
+// Get user specific answer history for an event
+export async function getUserAnswerHistory(req, res) {
+  const { eventId, userId } = req.params;
+  
+  try {
+    // Check if event exists
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ msg: 'Event not found' });
+    }
+    
+    // Check if user is admin or the user themselves
+    const isAdmin = req.user.role === 'admin';
+    const isSameUser = req.user.id === userId;
+    
+    if (!isAdmin && !isSameUser) {
+      return res.status(403).json({ msg: 'Access denied' });
+    }
+    
+    // Get answers for specific user
+    const answers = await Answer.find({
+      eventId,
+      userId
+    }).sort({ ts: -1 });
+    
+    return res.json(answers);
+    
+  } catch (err) {
+    console.error('Error fetching user answer history:', err);
+    res.status(500).send('Server error');
+  }
+}
+
+// Track hint usage
+export async function trackHintUsage(req, res) {
+  const { eventId, questionId } = req.params;
+  
+  try {
+    // Find the event
+    const event = await Event.findById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ msg: 'Event not found' });
+    }
+    
+    // Check if the user is a participant in this event
+    const userIndex = event.participants.findIndex(
+      p => p.user.toString() === req.user.id
+    );
+    
+    if (userIndex === -1) {
+      return res.status(403).json({ msg: 'You must join this event before viewing hints' });
+    }
+    
+    // Find the question in the embedded data
+    let foundQuestion = null;
+    let foundCategory = null;
+    
+    // Search through all categories and their questions
+    for (const category of event.questionSet.categories) {
+      for (const question of category.questions) {
+        // Use either originalId or _id to match
+        const questionIdToCheck = question.originalId ? 
+          question.originalId.toString() : 
+          question._id.toString();
+        
+        if (questionIdToCheck === questionId) {
+          foundQuestion = question;
+          foundCategory = category;
+          break;
+        }
+      }
+      
+      if (foundQuestion) break;
+    }
+    
+    if (!foundQuestion) {
+      return res.status(404).json({ msg: 'Question not found' });
+    }
+    
+    // Check if hint exists
+    if (!foundQuestion.hint || !foundQuestion.hint.text) {
+      return res.status(404).json({ msg: 'No hint available for this question' });
+    }
+    
+    // Calculate point reduction
+    let pointReduction = foundQuestion.hint.pointReduction || 10;
+    let reductionType = foundQuestion.hint.reductionType || 'percentage';
+    
+    // Calculate actual point value that will be reduced
+    let pointValue = 0;
+    if (reductionType === 'percentage') {
+      pointValue = Math.floor((foundQuestion.points * pointReduction) / 100);
+    } else {
+      pointValue = pointReduction;
+    }
+    
+    // Create an answer event for the hint usage
+    const hintEvent = new Answer({
+      userId: req.user.id,
+      eventId,
+      questionId,
+      questionTitle: foundQuestion.title,
+      categoryName: foundCategory.name,
+      userAnswer: '[HINT USED]',
+      isCorrect: false,
+      hintUsed: true,
+      pointsAwarded: -pointValue, // Negative points for hint usage
+      ts: new Date() // Current timestamp
+    });
+    
+    await hintEvent.save();
+    
+    // Return the hint and point reduction info
+    res.json({
+      hint: foundQuestion.hint.text,
+      pointReduction: pointValue,
+      reductionType
+    });
+    
+  } catch (err) {
+    console.error('Error tracking hint usage:', err);
+    res.status(500).send('Server error');
+  }
+}
+
 export async function checkAnswer(req, res) {
   const { answer, hintUsed, hintReduction, hintReductionType } = req.body;
   const { eventId, questionId } = req.params;
@@ -547,17 +717,40 @@ export async function checkAnswer(req, res) {
     
     // Calculate points based on hint usage
     let awardedPoints = foundQuestion.points;
+    let pointsChange = 0;
     
-    if (isCorrect && hintUsed) {
-      if (hintReductionType === 'percentage') {
-        // Apply percentage reduction
-        const reductionAmount = (foundQuestion.points * hintReduction) / 100;
-        awardedPoints = Math.floor(foundQuestion.points - reductionAmount);
-      } else {
-        // Apply static point reduction
-        awardedPoints = Math.max(0, foundQuestion.points - hintReduction);
+    if (isCorrect) {
+      if (hintUsed) {
+        if (hintReductionType === 'percentage') {
+          // Apply percentage reduction
+          const reductionAmount = (foundQuestion.points * hintReduction) / 100;
+          awardedPoints = Math.floor(foundQuestion.points - reductionAmount);
+        } else {
+          // Apply static point reduction
+          awardedPoints = Math.max(0, foundQuestion.points - hintReduction);
+        }
       }
+      pointsChange = awardedPoints;
+    } else {
+      // Wrong answer - no points or small penalty could be applied here
+      pointsChange = 0; // Could be a negative value to implement penalties
     }
+    
+    // Create an answer event in the time series collection
+    const answerEvent = new Answer({
+      userId: req.user.id,
+      eventId,
+      questionId,
+      questionTitle: foundQuestion.title,
+      categoryName: foundCategory.name,
+      userAnswer: answer,
+      isCorrect,
+      hintUsed: hintUsed || false,
+      pointsAwarded: pointsChange,
+      ts: new Date() // Current timestamp
+    });
+    
+    await answerEvent.save();
     
     // If correct, update the participant's record
     if (isCorrect) {
