@@ -1,5 +1,6 @@
 import Event from '../models/Event.js';
 import User from '../models/User.js';
+import QuestionSet from '../models/QuestionSet.js';
 import { validationResult } from 'express-validator';
 import fs from 'fs';
 import path from 'path';
@@ -94,7 +95,7 @@ export async function createEvent(req, res) {
   const { 
     name, 
     description, 
-    questionSet, 
+    questionSet: questionSetId, 
     eventCode, 
     eventDate, 
     duration, 
@@ -113,12 +114,53 @@ export async function createEvent(req, res) {
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });
     }
-
-    // Create new event
+    
+    // Fetch the complete question set with all questions
+    const fullQuestionSet = await QuestionSet.findById(questionSetId)
+      .populate({
+        path: 'categories.questions',
+        model: 'Question'
+      });
+    
+    if (!fullQuestionSet) {
+      return res.status(404).json({ msg: 'Question set not found' });
+    }
+    
+    // Prepare embedded question set data
+    const embeddedQuestionSet = {
+      title: fullQuestionSet.title,
+      description: fullQuestionSet.description,
+      categories: fullQuestionSet.categories.map(category => {
+        // For each category, get its questions
+        const populatedQuestions = category.questions.map(question => {
+          // For each question, extract relevant data
+          return {
+            title: question.title,
+            description: question.description,
+            points: question.points,
+            difficulty: question.difficulty,
+            wizProduct: question.wizProduct,
+            answer: question.answer,
+            creatorEmail: question.creatorEmail,
+            originalId: question._id
+          };
+        });
+        
+        // Return embedded category with embedded questions
+        return {
+          name: category.name,
+          description: category.description,
+          questions: populatedQuestions
+        };
+      })
+    };
+    
+    // Create new event with embedded question set data
     const newEvent = new Event({
       name,
       description,
-      questionSet,
+      questionSetRef: questionSetId,
+      questionSet: embeddedQuestionSet,
       eventCode,
       eventDate,
       duration: duration || 60,
@@ -153,7 +195,7 @@ export async function updateEvent(req, res) {
   const { 
     name, 
     description, 
-    questionSet, 
+    questionSet: questionSetId, 
     eventCode, 
     eventDate, 
     duration, 
@@ -183,12 +225,57 @@ export async function updateEvent(req, res) {
     const eventFields = {};
     if (name) eventFields.name = name;
     if (description !== undefined) eventFields.description = description;
-    if (questionSet) eventFields.questionSet = questionSet;
     if (eventCode) eventFields.eventCode = eventCode;
     if (eventDate) eventFields.eventDate = eventDate;
     if (duration) eventFields.duration = duration;
     if (active !== undefined) eventFields.active = active;
     eventFields.updatedAt = Date.now();
+    
+    // If question set has changed, update embedded data
+    if (questionSetId && questionSetId !== event.questionSetRef.toString()) {
+      // Fetch the new question set with all questions
+      const fullQuestionSet = await QuestionSet.findById(questionSetId)
+        .populate({
+          path: 'categories.questions',
+          model: 'Question'
+        });
+      
+      if (!fullQuestionSet) {
+        return res.status(404).json({ msg: 'Question set not found' });
+      }
+      
+      // Prepare embedded question set data
+      const embeddedQuestionSet = {
+        title: fullQuestionSet.title,
+        description: fullQuestionSet.description,
+        categories: fullQuestionSet.categories.map(category => {
+          // For each category, get its questions
+          const populatedQuestions = category.questions.map(question => {
+            // For each question, extract relevant data
+            return {
+              title: question.title,
+              description: question.description,
+              points: question.points,
+              difficulty: question.difficulty,
+              wizProduct: question.wizProduct,
+              answer: question.answer,
+              creatorEmail: question.creatorEmail,
+              originalId: question._id
+            };
+          });
+          
+          // Return embedded category with embedded questions
+          return {
+            name: category.name,
+            description: category.description,
+            questions: populatedQuestions
+          };
+        })
+      };
+      
+      eventFields.questionSetRef = questionSetId;
+      eventFields.questionSet = embeddedQuestionSet;
+    }
 
     // Handle image upload if it exists
     if (req.file) {
@@ -330,6 +417,75 @@ export async function getEventParticipants(req, res) {
     if (err.kind === 'ObjectId') {
       return res.status(404).json({ msg: 'Event not found' });
     }
+    res.status(500).send('Server error');
+  }
+}
+
+// Check an answer for a question
+export async function checkAnswer(req, res) {
+  const { answer } = req.body;
+  const { eventId, questionId } = req.params;
+  
+  if (!answer) {
+    return res.status(400).json({ msg: 'Answer is required' });
+  }
+  
+  try {
+    // Find the event
+    const event = await Event.findById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ msg: 'Event not found' });
+    }
+    
+    // Check if the user is a participant in this event
+    const isParticipant = event.participants.some(
+      p => p.user.toString() === req.user.id
+    );
+    
+    if (!isParticipant) {
+      return res.status(403).json({ msg: 'You must join this event before submitting answers' });
+    }
+    
+    // Find the question in the embedded data
+    let foundQuestion = null;
+    let foundCategory = null;
+    
+    // Search through all categories and their questions
+    for (const category of event.questionSet.categories) {
+      for (const question of category.questions) {
+        // Use either originalId or _id to match
+        const questionIdToCheck = question.originalId ? 
+          question.originalId.toString() : 
+          question._id.toString();
+        
+        if (questionIdToCheck === questionId) {
+          foundQuestion = question;
+          foundCategory = category;
+          break;
+        }
+      }
+      
+      if (foundQuestion) break;
+    }
+    
+    if (!foundQuestion) {
+      return res.status(404).json({ msg: 'Question not found' });
+    }
+    
+    // Check if answer is correct (case insensitive comparison)
+    const isCorrect = 
+      answer.toLowerCase().trim() === foundQuestion.answer.toLowerCase().trim();
+    
+    // Return result
+    res.json({
+      correct: isCorrect,
+      points: isCorrect ? foundQuestion.points : 0,
+      category: foundCategory ? foundCategory.name : null
+    });
+    
+  } catch (err) {
+    console.error('Error checking answer:', err);
     res.status(500).send('Server error');
   }
 }

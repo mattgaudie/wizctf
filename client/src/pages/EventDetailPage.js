@@ -40,25 +40,36 @@ const EventDetailPage = () => {
       // Set questions to empty array by default
       setQuestions([]);
       
-      // Get questions for this event's question set
-      if (eventData.questionSet && eventData.questionSet._id) {
-        console.log(`Fetching questions for question set: ${eventData.questionSet._id}`);
-        try {
-          const questionsData = await questionSetService.getQuestionSetQuestions(eventData.questionSet._id);
-          
-          // Ensure questionsData is an array
-          if (Array.isArray(questionsData)) {
-            console.log(`Retrieved ${questionsData.length} questions`);
-            setQuestions(questionsData);
-          } else {
-            console.warn('Questions data is not an array:', questionsData);
-            setQuestions([]);
+      // Extract questions from embedded data if available
+      if (eventData.questionSet && Array.isArray(eventData.questionSet.categories)) {
+        console.log('Using embedded question data from event');
+        
+        // Flatten questions from all categories
+        const allQuestions = [];
+        
+        eventData.questionSet.categories.forEach(category => {
+          if (category.questions && Array.isArray(category.questions)) {
+            // Map each question to add category and standardize format
+            const categoryQuestions = category.questions.map(q => ({
+              _id: q.originalId || q._id, // Use original ID if available
+              text: q.description || q.title, // Use description as text field for display
+              title: q.title,
+              category: category.name,
+              points: q.points,
+              difficulty: q.difficulty,
+              wizProduct: q.wizProduct,
+              // Don't include the answer in the client-facing data
+            }));
+            
+            allQuestions.push(...categoryQuestions);
           }
-        } catch (questionsErr) {
-          console.error('Error fetching questions:', questionsErr);
-          // Continue with the event even if questions failed to load
-          setQuestions([]);
-        }
+        });
+        
+        console.log(`Extracted ${allQuestions.length} questions from embedded data`);
+        setQuestions(allQuestions);
+      } else {
+        console.warn('No embedded question data available in event');
+        setQuestions([]);
       }
     } catch (err) {
       console.error('Error fetching event details:', err);
@@ -100,13 +111,14 @@ const EventDetailPage = () => {
       
       console.log(`Submitting answer for question ${questionId} in event ${id}`);
       
+      // Use our endpoint that works with embedded data
       const response = await fetch(`/api/events/${id}/questions/${questionId}/answer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-auth-token': localStorage.getItem('token')
         },
-        body: JSON.stringify({ answer })
+        body: JSON.stringify({ answer: answer.trim() })
       });
       
       // Check if response is JSON
@@ -131,13 +143,14 @@ const EventDetailPage = () => {
       });
       
       if (data.correct) {
-        alert('Correct answer!');
+        const pointsMsg = data.points ? ` (${data.points} points)` : '';
+        alert(`Correct answer!${pointsMsg}`);
       } else {
         alert('Incorrect answer. Try again!');
       }
       
-      // Refresh questions to update status
-      fetchEventDetails();
+      // No need to refresh the whole event, as the questions are embedded
+      // fetchEventDetails();
     } catch (err) {
       alert('An error occurred. Please try again.');
       console.error('Error submitting answer:', err);

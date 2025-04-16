@@ -8,7 +8,8 @@ import {
   deleteEvent,
   joinEvent,
   getEventParticipants,
-  getUserEvents
+  getUserEvents,
+  checkAnswer
 } from '../../controllers/event.controller.js';
 import auth from '../../middleware/auth.middleware.js';
 import { isAdmin } from '../../middleware/admin.middleware.js';
@@ -98,5 +99,19 @@ router.post(
 // @desc    Get all participants for an event (admin only)
 // @access  Private/Admin
 router.get('/:id/participants', [auth, isAdmin], getEventParticipants);
+
+// @route   POST api/events/:eventId/questions/:questionId/answer
+// @desc    Check an answer for a question in an event
+// @access  Private
+router.post(
+  '/:eventId/questions/:questionId/answer',
+  [
+    auth,
+    [
+      check('answer', 'Answer is required').not().isEmpty()
+    ]
+  ],
+  checkAnswer
+);
 
 export default router;

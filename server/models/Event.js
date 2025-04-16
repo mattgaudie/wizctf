@@ -10,10 +10,59 @@ const EventSchema = new Schema({
     type: String,
     trim: true
   },
-  questionSet: {
+  questionSetRef: {
     type: Schema.Types.ObjectId,
     ref: 'QuestionSet',
     required: true
+  },
+  // Embedded question set data
+  questionSet: {
+    title: {
+      type: String,
+      trim: true
+    },
+    description: {
+      type: String,
+      trim: true
+    },
+    categories: [{
+      name: {
+        type: String,
+        trim: true
+      },
+      description: {
+        type: String,
+        trim: true
+      },
+      questions: [{
+        title: {
+          type: String,
+          trim: true
+        },
+        description: {
+          type: String,
+          trim: true
+        },
+        points: {
+          type: Number,
+          min: 1
+        },
+        difficulty: {
+          type: String,
+          enum: ['easy', 'medium', 'hard']
+        },
+        wizProduct: {
+          type: String,
+          enum: ['Wiz Cloud', 'Wiz Code', 'Wiz Defend', 'Wiz Sensor']
+        },
+        answer: {
+          type: String,
+          trim: true
+        },
+        creatorEmail: String,
+        originalId: Schema.Types.ObjectId
+      }]
+    }]
   },
   eventCode: {
     type: String,
