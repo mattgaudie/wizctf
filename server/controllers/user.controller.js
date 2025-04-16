@@ -1,7 +1,30 @@
 import User from '../models/User.js';
+import Event from '../models/Event.js';
 import { validationResult } from 'express-validator';
 import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
+
+// Get user event participation history
+export async function getUserEventHistory(req, res) {
+  try {
+    const user = await User.findById(req.user.id)
+      .select('eventParticipation')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
+    // Sort by event date (most recent first)
+    const eventHistory = user.eventParticipation || [];
+    eventHistory.sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate));
+
+    res.json(eventHistory);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+}
 
 // Update user profile
 export async function updateProfile(req, res) {

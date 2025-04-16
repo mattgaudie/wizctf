@@ -2,6 +2,47 @@ import { Schema, model } from 'mongoose';
 import bcryptjs from 'bcryptjs';
 const { genSalt, hash, compare } = bcryptjs;
 
+const EventParticipationSchema = new Schema({
+  eventId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Event',
+    required: true
+  },
+  eventName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  eventDescription: {
+    type: String,
+    trim: true
+  },
+  eventDate: {
+    type: Date,
+    required: true
+  },
+  joinedAt: {
+    type: Date,
+    default: Date.now
+  },
+  questionsAnswered: {
+    type: Number,
+    default: 0
+  },
+  score: {
+    type: Number,
+    default: 0
+  },
+  position: {
+    type: Number,
+    default: null
+  },
+  totalParticipants: {
+    type: Number,
+    default: null
+  }
+});
+
 const UserSchema = new Schema({
   email: {
     type: String,
@@ -53,6 +94,7 @@ const UserSchema = new Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
+  eventParticipation: [EventParticipationSchema],
   createdAt: {
     type: Date,
     default: Date.now

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 const router = Router();
 import { check } from 'express-validator';
-import { updateProfile, uploadProfilePicture, deleteUser } from '../../controllers/user.controller.js';
+import { getUserEventHistory, updateProfile, uploadProfilePicture, deleteUser } from '../../controllers/user.controller.js';
 import auth from '../../middleware/auth.middleware.js';
 import { uploadProfile } from '../../middleware/upload.middleware.js';
 
@@ -28,6 +28,11 @@ router.post(
   [auth, uploadProfile.single('profilePicture')],
   uploadProfilePicture
 );
+
+// @route   GET api/users/event-history
+// @desc    Get user's event participation history
+// @access  Private
+router.get('/event-history', auth, getUserEventHistory);
 
 // @route   DELETE api/users/:id
 // @desc    Delete user

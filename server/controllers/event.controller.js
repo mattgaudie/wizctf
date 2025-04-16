@@ -428,7 +428,26 @@ export async function joinEvent(req, res) {
       organization: user.organization || ''
     });
     
-    await event.save();
+    // Add event to user's participation history
+    if (!user.eventParticipation) {
+      user.eventParticipation = [];
+    }
+    
+    user.eventParticipation.push({
+      eventId: event._id,
+      eventName: event.name,
+      eventDescription: event.description,
+      eventDate: event.eventDate,
+      joinedAt: Date.now(),
+      questionsAnswered: 0,
+      score: 0
+    });
+    
+    // Save both event and user
+    await Promise.all([
+      event.save(),
+      user.save()
+    ]);
     
     res.json({ msg: 'Successfully joined the event', event: { id: event._id, name: event.name } });
   } catch (err) {
@@ -557,8 +576,54 @@ export async function checkAnswer(req, res) {
       
       event.participants[userIndex].score += awardedPoints;
       
+      // Update user's event participation record
+      const user = await User.findById(req.user.id);
+      if (user && user.eventParticipation) {
+        const participationIndex = user.eventParticipation.findIndex(
+          p => p.eventId.toString() === eventId
+        );
+        
+        if (participationIndex !== -1) {
+          // Increment questions answered count
+          user.eventParticipation[participationIndex].questionsAnswered += 1;
+          
+          // Update score
+          user.eventParticipation[participationIndex].score += awardedPoints;
+          
+          await user.save();
+        }
+      }
+      
       // Save the event
       await event.save();
+      
+      // Calculate leaderboard positions
+      try {
+        // Get all participants for this event sorted by score
+        const participants = [...event.participants].sort((a, b) => (b.score || 0) - (a.score || 0));
+        
+        // Update positions in the user's event participation record
+        const currentUser = await User.findById(req.user.id);
+        if (currentUser && currentUser.eventParticipation) {
+          const participationIndex = currentUser.eventParticipation.findIndex(
+            p => p.eventId.toString() === eventId
+          );
+          
+          if (participationIndex !== -1) {
+            // Find position in leaderboard
+            const position = participants.findIndex(p => p.user.toString() === req.user.id) + 1;
+            
+            // Update position and total participants
+            currentUser.eventParticipation[participationIndex].position = position;
+            currentUser.eventParticipation[participationIndex].totalParticipants = participants.length;
+            
+            await currentUser.save();
+          }
+        }
+      } catch (err) {
+        console.error('Error updating leaderboard positions:', err);
+        // Continue execution even if there's an error with position calculation
+      }
     }
     
     // Return result
